@@ -1,0 +1,71 @@
+GLOSSARY CONTENT LICENSE
+========================
+
+The content of this Tcl/Tk glossary (term definitions, descriptions,
+examples in prose) is licensed under the
+
+  Creative Commons Attribution 4.0 International License (CC BY 4.0)
+
+You are free to:
+
+  * Share — copy and redistribute the material in any medium or format
+  * Adapt — remix, transform, and build upon the material for any
+    purpose, even commercially.
+
+Under the following terms:
+
+  * Attribution — You must give appropriate credit, provide a link
+    to the license, and indicate if changes were made. You may do so
+    in any reasonable manner, but not in any way that suggests the
+    licensor endorses you or your use.
+
+  * No additional restrictions — You may not apply legal terms or
+    technological measures that legally restrict others from doing
+    anything the license permits.
+
+Full license text: https://creativecommons.org/licenses/by/4.0/legalcode
+Summary:           https://creativecommons.org/licenses/by/4.0/
+
+
+CODE EXAMPLES
+=============
+
+Tcl/Tk code snippets shown as examples within glossary entries are
+released to the public domain under CC0 1.0 Universal. They may be
+used freely without attribution.
+
+  https://creativecommons.org/publicdomain/zero/1.0/
+
+
+ACKNOWLEDGMENTS
+===============
+
+Some definitions in this glossary draw on terminology and wording
+from the official Tcl/Tk documentation, which is distributed under
+the "Tcl License" (a BSD-style permissive license).
+
+The following copyright notices apply to that material:
+
+  Copyright (c) Regents of the University of California
+  Copyright (c) Sun Microsystems, Inc.
+  Copyright (c) Scriptics Corporation
+  Copyright (c) ActiveState Corporation
+  Copyright (c) and other parties
+
+The Tcl License grants free use, modification, and redistribution
+of the Tcl/Tk software and its documentation, requiring only that
+copyright notices are preserved.
+
+Full Tcl License text:
+  https://www.tcl-lang.org/software/tcltk/license.html
+
+
+GLOSSARY TOOLS
+==============
+
+The Tcl/Tk scripts that operate this glossary (glossary_gui.tcl,
+glossary_tui.tcl, the import/export tools) are licensed separately
+under the MIT License — see the LICENSE file in this repository.
+
+Content (this file)  → CC BY 4.0
+Code (LICENSE)       → MIT

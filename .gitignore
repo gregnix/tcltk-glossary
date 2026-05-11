@@ -1,0 +1,26 @@
+# Backups
+*.bak
+*.orig
+glossary.db.[0-9]*
+glossary.db-journal
+glossary.db-wal
+glossary.db-shm
+
+# Editor / OS
+*~
+.*.swp
+.DS_Store
+Thumbs.db
+
+# Generated outputs
+*.pdf
+*.html
+!doc/*.pdf
+!doc/*.html
+
+# User configuration
+.glossary_manager.rc
+
+# Local working dirs
+nogit/
+private/
