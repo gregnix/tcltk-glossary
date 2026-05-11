@@ -13,9 +13,7 @@ glossary.db-shm
 Thumbs.db
 
 # Generated outputs
-*.pdf
-*.html
-!doc/*.pdf
+*!doc/*.pdf
 !doc/*.html
 
 # User configuration
