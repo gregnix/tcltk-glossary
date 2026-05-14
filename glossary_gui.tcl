@@ -1924,10 +1924,62 @@ proc save_and_exit {} {
 
 
 # Main
-if {[llength $argv] > 0} {
-    set db_file [lindex $argv 0]
-    if {[file exists $db_file]} {
-        connect_db $db_file
+# ============================================================
+# CLI-Argumente:
+#   glossary_gui.tcl ?<db-datei>? ?--search <term>? ?--help?
+#
+# --search TERM   : nach App-Start TERM ins Suchfeld eintragen und FTS-Suche
+#                   ausloesen. Nuetzlich fuer Cross-App-Aufrufe (z.B. aus
+#                   mdhelp via tcldocs::launcher).
+# --help          : kurze Hilfe auf stderr, dann exit.
+# Positionales:   : optionale glossary.db-Datei (Default: glossary.db).
+# ============================================================
+
+set ::cli_db_file ""
+set ::cli_search_term ""
+
+set _i 0
+while {$_i < $argc} {
+    set _a [lindex $argv $_i]
+    switch -- $_a {
+        --search {
+            incr _i
+            if {$_i >= $argc} {
+                puts stderr "Fehler: --search braucht einen Term"
+                exit 1
+            }
+            set ::cli_search_term [lindex $argv $_i]
+            incr _i
+        }
+        --help - -h {
+            puts stderr "Aufruf: wish glossary_gui.tcl ?<db-datei>? ?--search TERM?"
+            puts stderr ""
+            puts stderr "  <db-datei>     Pfad zur SQLite-Datenbank (Default: glossary.db)"
+            puts stderr "  --search TERM  Suchfeld mit TERM fuellen und FTS-Suche ausloesen"
+            puts stderr "  --help, -h     Diese Hilfe"
+            exit 0
+        }
+        default {
+            if {[string match "--*" $_a]} {
+                puts stderr "Unbekannte Option: $_a (--help fuer Hilfe)"
+                exit 1
+            }
+            if {$::cli_db_file eq ""} {
+                set ::cli_db_file $_a
+            } else {
+                puts stderr "Unerwartetes Argument: $_a"
+                exit 1
+            }
+            incr _i
+        }
+    }
+}
+
+if {$::cli_db_file ne ""} {
+    if {[file exists $::cli_db_file]} {
+        connect_db $::cli_db_file
+    } else {
+        puts stderr "Warnung: db-Datei '$::cli_db_file' nicht gefunden"
     }
 }
 
@@ -1940,4 +1992,17 @@ _restore_sash_position
 
 if {[llength [info commands ::glossdb]]} {
     load_all_terms
+}
+
+# Wenn --search TERM auf der Kommandozeile war: Suchfeld fuellen und
+# Suche ausloesen. Erfolgt erst NACH load_all_terms, damit der Treeview
+# fertig befuellt ist.
+if {$::cli_search_term ne ""} {
+    set ::search_query $::cli_search_term
+    if {[llength [info commands ::glossdb]]} {
+        search_terms
+    }
+    # Fokus aufs Suchfeld, damit User direkt weitertippen kann
+    catch {focus .search.entry}
+    catch {.search.entry icursor end}
 }

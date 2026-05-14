@@ -3,38 +3,64 @@
 The format is loosely based on
 [Keep a Changelog](https://keepachangelog.com/).
 
-## 2026-05-13 — Repo-Hygiene + Roundtrip-Test
-
-**Affected:** keine Code-Aenderung an GUI/TUI/Tools. Nur Doku-Sync und
-Test-Infrastruktur.
+## 2026-05-14 — CLI: `--search TERM` for cross-app integration
 
 ### Added
 
-- **`tests/test-roundtrip.tcl`** -- prueft die Export-Import-Pipeline:
-  exportiert `glossary.db` mit `tools/export_full.tcl`, importiert
-  mit `tools/import_md.tcl` in eine temporaere DB, vergleicht Term-
-  und Kategorie-Counts. Self-skipping wenn `tdbc::sqlite3` oder die
-  `sqlite3`-CLI fehlen (Exit-Code 2). Hintergrund: Review-Empfehlung
-  von 2026-05-13 (`reviews/2026-05-13-markdown-gesamtbegutachtung.md`
-  Abschnitt 3.6: "Export-Pipeline in CI pruefen").
+- **`glossary_gui.tcl`** — new CLI option `--search TERM`. After app
+  startup, fills the search field with TERM and triggers the FTS5
+  search. Useful for cross-app calls via `tcldocs::launcher` from
+  mdhelp or man-viewer ("Look up in glossary" context menu).
+- **`--help`** / **`-h`** on the CLI — shows brief help and exits.
+
+### Changed
+
+- **argv parsing extended**: the positional argument (`<db-file>`)
+  is still supported; in addition, proper option parsing with error
+  messages on unknown options.
+
+### Examples
+
+```bash
+wish glossary_gui.tcl                              # as before
+wish glossary_gui.tcl glossary.db                  # explicit DB
+wish glossary_gui.tcl --search foreach             # with pre-fill
+wish glossary_gui.tcl glossary.db --search foreach # both
+wish glossary_gui.tcl --help                       # help
+```
+
+## 2026-05-13 — Repo hygiene + roundtrip test
+
+**Affected:** no code changes to GUI/TUI/tools. Documentation sync
+and test infrastructure only.
+
+### Added
+
+- **`tests/test-roundtrip.tcl`** — verifies the export-import
+  pipeline: exports `glossary.db` via `tools/export_full.tcl`,
+  imports it through `tools/import_md.tcl` into a temporary DB, and
+  compares term and category counts. Self-skipping when
+  `tdbc::sqlite3` or the `sqlite3` CLI is missing (exit code 2).
+  Background: review recommendation 2026-05-13 (Section 3.6:
+  "verify the export pipeline in CI").
 
 ### Fixed
 
-- **`.gitignore`** -- absoluter Pfad `/home/greg/Project/...` als
-  letzte Zeile entfernt (wirkte ohnehin nicht; gitignore-Patterns sind
-  immer relativ). Negation `*!doc/*.pdf` korrigiert zu sauberen
-  `!doc/*.pdf` und `!export/*.pdf` (vorher matchte `*!...` Dateien
-  mit `!` im Namen statt zu negieren).
-- **`README.md`** Term-Zahlen mit DB synchronisiert:
-  `1324 terms / 122 categories` ueberall ersetzt durch
-  `1681 terms / 137 categories` (Stand DB 2026-05-13).
-- **`README.md`** Tools-Auflistung -- `tools/migrate-1.5.sql` ergaenzt
-  (Migration UNIQUE(term) -> UNIQUE(term, category) von 1.4 nach 1.5).
+- **`.gitignore`** — absolute path `/home/greg/Project/...` as last
+  line removed (had no effect anyway; gitignore patterns are always
+  relative). Negation `*!doc/*.pdf` corrected to clean
+  `!doc/*.pdf` and `!export/*.pdf` (previously `*!...` matched files
+  with `!` in their name instead of negating).
+- **`README.md`** term counts synchronized with the DB:
+  `1324 terms / 122 categories` replaced throughout with
+  `1681 terms / 137 categories` (DB state on 2026-05-13).
+- **`README.md`** tools listing — `tools/migrate-1.5.sql` added
+  (migration `UNIQUE(term)` → `UNIQUE(term, category)` from 1.4 to 1.5).
 
 ### Documentation
 
-- **`README.md`** neue **Tests**-Sektion mit `test_tui.sh` und dem
-  neuen Roundtrip-Test; File-Layout um `tests/` ergaenzt.
+- **`README.md`** new **Tests** section with `test_tui.sh` and the
+  new roundtrip test; file layout extended by `tests/`.
 
 ## 1.4 (2026-05-10)
 

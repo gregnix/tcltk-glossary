@@ -31,6 +31,10 @@ sudo dnf install tcl tk sqlite tcl-sqlite tcl-tdbc-sqlite3         # Fedora
 # GUI
 wish glossary_gui.tcl glossary.db
 
+# GUI with pre-filled search (useful for cross-app launching)
+wish glossary_gui.tcl --search foreach
+wish glossary_gui.tcl glossary.db --search "event loop"
+
 # TUI
 tclsh glossary_tui.tcl glossary.db
 ```
@@ -230,17 +234,17 @@ tcltk-glossary/
 ## Tests
 
 ```bash
-# TUI smoke test (Statistik, Suche, Kategorien)
+# TUI smoke test (statistics, search, categories)
 bash test_tui.sh
 
-# Export/Import roundtrip:
-# Exportiert die DB als Markdown, importiert sie in eine temporaere
-# DB, vergleicht Term- und Kategorie-Counts.
+# Export / import roundtrip:
+# Exports the DB as Markdown, imports it into a temporary DB,
+# compares term and category counts.
 tclsh tests/test-roundtrip.tcl
 ```
 
-Beide Tests sind self-skipping wenn die benoetigten Dependencies
-(`tdbc::sqlite3`, `sqlite3` CLI) fehlen -- Exit-Code 2.
+Both tests are self-skipping when required dependencies
+(`tdbc::sqlite3`, `sqlite3` CLI) are missing — exit code 2.
 
 ## Performance
 
@@ -270,5 +274,5 @@ acknowledgments to the Tcl/Tk documentation team.
 - [TDBC](https://www.tcl-lang.org/man/tcl/TdbcCmd/contents.htm)
 - The [docir](https://github.com/gregnix/docir) /
   [mdstack](https://github.com/gregnix/mdstack) /
-  [mdhelp](https://github.com/gregnix/mdhelp4) documentation suite
+  [mdhelp](https://github.com/gregnix/mdhelp) documentation suite
   (the PDF pipeline integrates with these)
