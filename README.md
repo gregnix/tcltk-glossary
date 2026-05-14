@@ -16,7 +16,7 @@ A bilingual (English/German) glossary of Tcl/Tk terminology with:
 - **Markdown import/export** (round-trip safe)
 - **Pure-Tcl PDF generation** (with TOC, index, bookmarks)
 - **Categories** with tree navigation
-- 1324 terms in 122 categories shipped
+- 1681 terms in 137 categories shipped
 
 The database (`glossary.db`) is included — you can open it directly,
 no import step needed.
@@ -202,7 +202,7 @@ tcltk-glossary/
 ├── LICENSE-CONTENT.txt     CC BY 4.0 (glossary content) + acknowledgments
 ├── glossary_gui.tcl        GUI application
 ├── glossary_tui.tcl        TUI application
-├── glossary.db             SQLite DB with 1324 terms
+├── glossary.db             SQLite DB with 1681 terms
 ├── test_tui.sh             TUI smoke test
 ├── tools/
 │   ├── import_md.tcl       Markdown -> SQLite
@@ -210,7 +210,8 @@ tcltk-glossary/
 │   ├── export_index.tcl    Index / overview
 │   ├── export_category.tcl Single category
 │   ├── glossary_to_pdf.tcl Markdown -> PDF (Tcl pipeline)
-│   └── schema.sql          Database schema
+│   ├── schema.sql          Database schema (DDL)
+│   └── migrate-1.5.sql     Migration 1.4 -> 1.5 (UNIQUE term -> term+category)
 ├── doc/
 │   ├── ARCHITECTURE.md
 │   ├── EDIT_DIALOG_GUIDE.md
@@ -220,13 +221,30 @@ tcltk-glossary/
 │   ├── glossary-gui.md
 │   ├── glossary-tui.md
 │   └── export-tools.md
-└── sample/
-    └── sample-import.md
+├── sample/
+│   └── sample-import.md
+└── tests/
+    └── test-roundtrip.tcl  Export -> Import roundtrip verifier
 ```
+
+## Tests
+
+```bash
+# TUI smoke test (Statistik, Suche, Kategorien)
+bash test_tui.sh
+
+# Export/Import roundtrip:
+# Exportiert die DB als Markdown, importiert sie in eine temporaere
+# DB, vergleicht Term- und Kategorie-Counts.
+tclsh tests/test-roundtrip.tcl
+```
+
+Beide Tests sind self-skipping wenn die benoetigten Dependencies
+(`tdbc::sqlite3`, `sqlite3` CLI) fehlen -- Exit-Code 2.
 
 ## Performance
 
-- FTS5 search across 1324 terms: < 10 ms
+- FTS5 search across 1681 terms: < 10 ms
 - GUI cold start: ~ 200 ms
 - TUI cold start: ~ 50 ms
 - PDF render of full glossary: ~ 6 s (~150 pages)

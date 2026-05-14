@@ -3,6 +3,39 @@
 The format is loosely based on
 [Keep a Changelog](https://keepachangelog.com/).
 
+## 2026-05-13 — Repo-Hygiene + Roundtrip-Test
+
+**Affected:** keine Code-Aenderung an GUI/TUI/Tools. Nur Doku-Sync und
+Test-Infrastruktur.
+
+### Added
+
+- **`tests/test-roundtrip.tcl`** -- prueft die Export-Import-Pipeline:
+  exportiert `glossary.db` mit `tools/export_full.tcl`, importiert
+  mit `tools/import_md.tcl` in eine temporaere DB, vergleicht Term-
+  und Kategorie-Counts. Self-skipping wenn `tdbc::sqlite3` oder die
+  `sqlite3`-CLI fehlen (Exit-Code 2). Hintergrund: Review-Empfehlung
+  von 2026-05-13 (`reviews/2026-05-13-markdown-gesamtbegutachtung.md`
+  Abschnitt 3.6: "Export-Pipeline in CI pruefen").
+
+### Fixed
+
+- **`.gitignore`** -- absoluter Pfad `/home/greg/Project/...` als
+  letzte Zeile entfernt (wirkte ohnehin nicht; gitignore-Patterns sind
+  immer relativ). Negation `*!doc/*.pdf` korrigiert zu sauberen
+  `!doc/*.pdf` und `!export/*.pdf` (vorher matchte `*!...` Dateien
+  mit `!` im Namen statt zu negieren).
+- **`README.md`** Term-Zahlen mit DB synchronisiert:
+  `1324 terms / 122 categories` ueberall ersetzt durch
+  `1681 terms / 137 categories` (Stand DB 2026-05-13).
+- **`README.md`** Tools-Auflistung -- `tools/migrate-1.5.sql` ergaenzt
+  (Migration UNIQUE(term) -> UNIQUE(term, category) von 1.4 nach 1.5).
+
+### Documentation
+
+- **`README.md`** neue **Tests**-Sektion mit `test_tui.sh` und dem
+  neuen Roundtrip-Test; File-Layout um `tests/` ergaenzt.
+
 ## 1.4 (2026-05-10)
 
 ### Added

@@ -1,6 +1,8 @@
 # Backups
 *.bak
 *.orig
+
+# SQLite-Begleitdateien (WAL, Journal, Backup-Kopien)
 glossary.db.[0-9]*
 glossary.db-journal
 glossary.db-wal
@@ -12,9 +14,14 @@ glossary.db-shm
 .DS_Store
 Thumbs.db
 
-# Generated outputs
-*!doc/*.pdf
+# Generated outputs -- PDF/HTML ignorieren AUSSER unter doc/ und export/
+# (Demo-Renderings dort sind committeter Repo-Inhalt).
+*.pdf
+*.html
+!doc/*.pdf
 !doc/*.html
+!export/*.pdf
+!export/*.html
 
 # User configuration
 .glossary_manager.rc
