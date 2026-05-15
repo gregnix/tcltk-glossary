@@ -1,0 +1,53 @@
+{
+  "schema": "tcltk-glossary/1.5",
+  "exported": "2026-05-15T07:00:00Z",
+  "stats": {
+    "terms": 4,
+    "categories": 1
+  },
+  "terms": [
+    {
+      "term": "tls::socket",
+      "category": "Socket/Netzwerk-Begriffe / Socket/Network Terms",
+      "en_definition": "Socket-creation command from the TLS extension that wraps a TCP socket in TLS/SSL. Drop-in replacement for the built-in `socket` command — accepts the same -async / -server / host / port arguments plus TLS-specific options like -tls1.2, -tls1.3, -cafile, -certfile, -require, -command. Returned channel is read/written like any Tcl socket; the TLS handshake happens transparently on first I/O (or explicitly via `tls::handshake`).",
+      "de_definition": "Socket-Erzeugungs-Kommando der TLS-Erweiterung, das einen TCP-Socket in TLS/SSL einpackt. Drop-in-Ersatz für das eingebaute `socket`-Kommando — nimmt die gleichen -async / -server / host / port Argumente plus TLS-spezifische Optionen wie -tls1.2, -tls1.3, -cafile, -certfile, -require, -command. Der zurückgegebene Channel wird wie jeder Tcl-Socket gelesen/geschrieben; der TLS-Handshake findet beim ersten I/O transparent statt (oder explizit via `tls::handshake`).",
+      "en_example": "package require tls\n\n# Simple HTTPS-capable client socket\nset sock [tls::socket -require 1 -cafile /etc/ssl/certs/ca-certificates.crt \\\n                     example.com 443]\nfconfigure $sock -encoding utf-8\nputs $sock \"GET / HTTP/1.1\"\nputs $sock \"Host: example.com\"\nputs $sock \"Connection: close\"\nputs $sock \"\"\nflush $sock\n\nwhile {[gets $sock line] >= 0} {\n    puts $line\n}\nclose $sock\n\n# Or wire into http via http::register (preferred)\nhttp::register https 443 ::tls::socket",
+      "de_example": "",
+      "related_terms": ["http::register", "TLS 1.2", "TLS 1.3", "socket", "fconfigure"],
+      "see_also": ["tls(n)", "https://core.tcl-lang.org/tcltls/"]
+    },
+
+    {
+      "term": "http::register",
+      "category": "Socket/Netzwerk-Begriffe / Socket/Network Terms",
+      "en_definition": "Registers a transport handler for a URL scheme with the `http` package. The canonical use is binding `https` to a TLS socket factory so that subsequent `http::geturl https://...` calls transparently establish TLS. The handler must be a command that returns a socket — typically `::tls::socket` plus options.",
+      "de_definition": "Registriert für ein URL-Schema einen Transport-Handler beim `http`-Paket. Die kanonische Verwendung ist die Bindung von `https` an einen TLS-Socket-Factory, damit folgende `http::geturl https://...`-Aufrufe transparent eine TLS-Verbindung aufbauen. Der Handler muss ein Kommando sein, das einen Socket zurückgibt — typischerweise `::tls::socket` plus Optionen.",
+      "en_example": "package require http\npackage require tls\n\n# Configure TLS once, register, then use http normally\ntls::init -tls1.2 1 -tls1.3 1 \\\n          -cafile /etc/ssl/certs/ca-certificates.crt \\\n          -require 1\nhttp::register https 443 ::tls::socket\n\nset tok [http::geturl https://example.com/]\nputs [http::data $tok]\nhttp::cleanup $tok\n\n# Equivalent with options passed inline\nhttp::register https 443 [list ::tls::socket -require 1 \\\n    -cafile /etc/ssl/certs/ca-certificates.crt]",
+      "de_example": "",
+      "related_terms": ["tls::socket", "TLS 1.2", "TLS 1.3", "http::geturl"],
+      "see_also": ["http(n)", "tls(n)"]
+    },
+
+    {
+      "term": "TLS 1.2",
+      "category": "Socket/Netzwerk-Begriffe / Socket/Network Terms",
+      "en_definition": "Version 1.2 of Transport Layer Security (2008, RFC 5246) — the minimum acceptable TLS version for current Internet traffic. The TLS extension enables it via the `-tls1.2 1` socket option, often together with `-tls1.3 1`. Older versions (TLS 1.0 / 1.1, SSL 3.0) are insecure and should be disabled with `-tls1 0 -tls1.1 0 -ssl3 0`.",
+      "de_definition": "Version 1.2 von Transport Layer Security (2008, RFC 5246) — die minimal akzeptable TLS-Version für aktuellen Internet-Verkehr. Die TLS-Erweiterung aktiviert sie über die Socket-Option `-tls1.2 1`, oft zusammen mit `-tls1.3 1`. Ältere Versionen (TLS 1.0 / 1.1, SSL 3.0) sind unsicher und sollten mit `-tls1 0 -tls1.1 0 -ssl3 0` deaktiviert werden.",
+      "en_example": "package require tls\n\n# Modern secure baseline\ntls::init \\\n    -ssl2 0 -ssl3 0 -tls1 0 -tls1.1 0 \\\n    -tls1.2 1 -tls1.3 1 \\\n    -require 1 \\\n    -cafile /etc/ssl/certs/ca-certificates.crt\n\nset sock [tls::socket api.example.com 443]\n# After handshake, query the negotiated version:\nset info [tls::status $sock]\nputs \"Negotiated: [dict get $info protocol]\"   ;# e.g. TLSv1.2 or TLSv1.3",
+      "de_example": "",
+      "related_terms": ["TLS 1.3", "tls::socket", "tls::init", "tls::status", "http::register"],
+      "see_also": ["tls(n)", "RFC 5246"]
+    },
+
+    {
+      "term": "TLS 1.3",
+      "category": "Socket/Netzwerk-Begriffe / Socket/Network Terms",
+      "en_definition": "Version 1.3 of Transport Layer Security (2018, RFC 8446) — the current state of the art. Removes weak ciphers, simplifies the handshake to a single round-trip (1-RTT) and supports 0-RTT resumption. Enabled in the TLS extension via `-tls1.3 1`. Requires a sufficiently recent OpenSSL build underneath (1.1.1 or later); older tcltls/openssl combinations may silently fall back to TLS 1.2.",
+      "de_definition": "Version 1.3 von Transport Layer Security (2018, RFC 8446) — der aktuelle Stand der Technik. Entfernt schwache Cipher, vereinfacht den Handshake auf eine einzige Round-Trip (1-RTT) und unterstützt 0-RTT-Resumption. Wird in der TLS-Erweiterung über `-tls1.3 1` aktiviert. Setzt einen ausreichend aktuellen OpenSSL-Build voraus (1.1.1 oder neuer); ältere tcltls/openssl-Kombinationen fallen still auf TLS 1.2 zurück.",
+      "en_example": "package require tls\n\n# Force TLS 1.3 only (rejects servers that can't speak it)\nset sock [tls::socket -tls1.2 0 -tls1.3 1 -require 1 \\\n                     -cafile /etc/ssl/certs/ca-certificates.crt \\\n                     example.com 443]\n\n# Verify what we got\nset info [tls::status $sock]\nif {[dict get $info protocol] ne \"TLSv1.3\"} {\n    close $sock\n    error \"Server does not support TLS 1.3\"\n}\nputs \"Cipher: [dict get $info cipher]\"\nclose $sock",
+      "de_example": "",
+      "related_terms": ["TLS 1.2", "tls::socket", "tls::init", "tls::status", "OpenSSL"],
+      "see_also": ["tls(n)", "RFC 8446"]
+    }
+  ]
+}

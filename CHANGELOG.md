@@ -3,6 +3,88 @@
 The format is loosely based on
 [Keep a Changelog](https://keepachangelog.com/).
 
+## 2026-05-15 — Multi-format import/export (MD / CSV / JSON)
+
+### Added
+
+- **`docs/glossary-formats.md`** — specification for the three
+  supported import/export formats with examples, comparison matrix
+  and round-trip guarantees.
+- **`tools/import_md.tcl`** — extended with `EN-EX` / `DE-EX` /
+  `RELATED` / `SEE` parsing. Backward compatible: existing 4-field
+  Markdown files still import unchanged (new fields stay empty).
+- **`tools/import_csv.tcl`** — RFC 4180 CSV import via `tcllib::csv`,
+  with multi-line quoted fields support (`::csv::iscomplete`).
+- **`tools/import_json.tcl`** — JSON import via `rl_json`. Validates
+  the `schema` tag (currently `tcltk-glossary/1.5`); warns and
+  continues for unknown future versions.
+- **`tools/export_md.tcl`** — Markdown export in the extended format
+  with `--category=NAME` and `--bilingual-only` filters.
+- **`tools/export_csv.tcl`** — CSV export via `tcllib::csv`.
+- **`tools/export_json.tcl`** — JSON export via `rl_json::json template`
+  with `--pretty` (default) and `--compact`. Schema `tcltk-glossary/1.5`.
+
+### Changed
+
+- **`glossary_gui.tcl` File menu** — replaced single `Export...` entry
+  with `Import...` and `Export...` items. Each opens a unified dialog
+  with a format combobox (Markdown extended / Markdown legacy / CSV /
+  JSON) and an optional category filter for export.
+- The new dialogs delegate the actual work to the CLI tools under
+  `tools/`, so the GUI and CLI share one implementation.
+
+### Format details
+
+- **Markdown (extended)** — adds `EN-EX:` / `DE-EX:` (with code-fence
+  body), `RELATED:` and `SEE:` lines per term.
+- **CSV** — RFC 4180 with header row, eight columns in the order
+  `term, category, en_definition, de_definition, en_example,
+  de_example, related_terms, see_also`. Multi-line cells via quoted
+  fields with embedded newlines.
+- **JSON** — top-level `{schema, exported, stats, terms[]}`. Within
+  each term, `related_terms` and `see_also` are arrays of strings
+  (joined to comma-separated TEXT for DB storage on import). Schema
+  version: `tcltk-glossary/1.5`.
+
+### Examples
+
+- **`examples/welle-1-unicode.md`** / `.csv` / `.json` — 13 Unicode /
+  encoding terms in all three formats, ready to import.
+
+## 2026-05-14 — Analytics menu: per-category overview and export
+
+### Added
+
+- **`Analytics` menu** in the menu bar with three items:
+    - **Categories overview…** — opens a window with a treeview
+      listing all categories with their term count, bilingual-term
+      count, and example-terms count, ordered by size. Multi-select
+      (Ctrl / Shift-click) plus a double-click shortcut for export.
+    - **Export selected category…** — combobox dialog to pick a
+      single category, then standard format chooser and file dialog.
+    - **Export multiple categories…** — listbox with multi-select,
+      "Select all" / "Clear selection" helpers, then format chooser
+      and file dialog.
+- **Smart default filenames**: single category exports use the
+  category name (sanitized); multi-category exports use
+  `glossary-N-cats.md`.
+- Reuses the existing `_export_md_standard` and
+  `_export_md_importable` writers — output format is identical to
+  full-database exports.
+
+### Implementation
+
+- New procs in `glossary_gui.tcl`:
+  `show_analytics_categories`, `_ana_refresh_categories`,
+  `_ana_export_categories_from_tv`, `export_one_category_dialog`,
+  `export_multi_categories_dialog`, `_ana_all_categories`,
+  `_ana_export_categories`.
+- All counts computed via a single `GROUP BY category` query with
+  `SUM(CASE WHEN …)` aggregates; one DB round-trip per refresh.
+- Per-category filter is applied in Tcl after a single ordered
+  fetch — keeps the query simple and avoids parameterized
+  `IN (…)` lists in TDBC.
+
 ## 2026-05-14 — CLI: `--search TERM` for cross-app integration
 
 ### Added

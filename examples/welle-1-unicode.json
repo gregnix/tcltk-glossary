@@ -1,0 +1,140 @@
+{
+  "schema": "tcltk-glossary/1.5",
+  "exported": "2026-05-15T03:42:00Z",
+  "stats": {
+    "terms": 13,
+    "categories": 4
+  },
+  "terms": [
+    {
+      "term": "Codepoint",
+      "category": "Zeichenkodierung und Standards / Character Encoding and Standards",
+      "en_definition": "A numeric value in the Unicode codespace (U+0000 to U+10FFFF) assigned to a character or special meaning. In Tcl a codepoint is obtained via `scan $char %c` and converted back via `format %c $cp`.",
+      "de_definition": "Ein numerischer Wert im Unicode-Codespace (U+0000 bis U+10FFFF), der einem Zeichen oder einer besonderen Bedeutung zugeordnet ist. In Tcl wird ein Codepoint mit `scan $char %c` ermittelt und mit `format %c $cp` zurück in ein Zeichen umgewandelt.",
+      "en_example": "scan A %c cp        ;# cp = 65\nformat %c 65        ;# \"A\"\nscan ä %c cp        ;# cp = 228\nformat %c 0x1F600   ;# grinning face emoji (Tcl 9)",
+      "de_example": "",
+      "related_terms": ["BMP", "Supplementary Plane", "format %c", "scan %c"],
+      "see_also": ["Tcl_UniChar(3)", "encoding(n)"]
+    },
+    {
+      "term": "BMP (Basic Multilingual Plane)",
+      "category": "Zeichenkodierung und Standards / Character Encoding and Standards",
+      "en_definition": "The first plane of Unicode (U+0000..U+FFFF) — 65 536 codepoints covering most living scripts. In Tcl the 4-digit `\\uHHHH` escape addresses only the BMP; codepoints beyond require `\\UHHHHHHHH` or surrogate pairs.",
+      "de_definition": "Die erste Ebene von Unicode (U+0000..U+FFFF) — 65 536 Codepoints, die die meisten lebenden Schriften abdecken. In Tcl spricht die 4-stellige `\\uHHHH`-Escape nur die BMP an; höhere Codepoints brauchen `\\UHHHHHHHH` oder Surrogate Pairs.",
+      "en_example": "set bmpChar \\u00E4     ;# ä (U+00E4, in BMP)\nset bmpChar \\u20AC     ;# € (U+20AC, in BMP)\nset nonBmp  \\U1F600    ;# emoji (U+1F600, NOT in BMP)",
+      "de_example": "",
+      "related_terms": ["Codepoint", "Supplementary Plane", "Surrogate Pair"],
+      "see_also": ["Tcl_UniChar(3)"]
+    },
+    {
+      "term": "Supplementary Plane",
+      "category": "Zeichenkodierung und Standards / Character Encoding and Standards",
+      "en_definition": "A Unicode plane outside the BMP — codepoints U+10000 to U+10FFFF, covering emoji, CJK extensions, ancient scripts and more. In Tcl 9 addressed directly via `\\UHHHHHHHH`; in Tcl 8.6 only via the `\\U` escape or surrogate pairs.",
+      "de_definition": "Eine Unicode-Ebene jenseits der BMP — Codepoints U+10000 bis U+10FFFF, mit Emojis, CJK-Erweiterungen, historischen Schriften usw. In Tcl 9 direkt via `\\UHHHHHHHH` adressierbar; in Tcl 8.6 nur über die `\\U`-Escape oder Surrogate Pairs.",
+      "en_example": "set smiley \\U1F600   ;# grinning face emoji\nset music  \\U1D11E   ;# musical symbol G clef\nset flag   \\U1F1FA\\U1F1F8  ;# US regional indicator pair",
+      "de_example": "",
+      "related_terms": ["BMP", "Codepoint", "Surrogate Pair", "Tcl/Tk 9"],
+      "see_also": ["Tcl_UniChar(3)"]
+    },
+    {
+      "term": "Surrogate Pair",
+      "category": "Zeichenkodierung und Standards / Character Encoding and Standards",
+      "en_definition": "A pair of UTF-16 code units (a high surrogate U+D800..U+DBFF followed by a low surrogate U+DC00..U+DFFF) that together encode one supplementary-plane codepoint. Needed in Tcl 8.6 to address codepoints above U+FFFF when `\\U` is not used.",
+      "de_definition": "Ein Paar von UTF-16-Code-Units (high surrogate U+D800..U+DBFF gefolgt von low surrogate U+DC00..U+DFFF), das zusammen einen Codepoint aus der Supplementary Plane kodiert. In Tcl 8.6 nötig, um Codepoints über U+FFFF ohne `\\U` zu adressieren.",
+      "en_example": "# Tcl 8.6 workaround for U+1F600:\nset emoji \"\\uD83D\\uDE00\"\n# Tcl 9 equivalent:\nset emoji \\U1F600",
+      "de_example": "",
+      "related_terms": ["BMP", "Supplementary Plane", "UTF-16"],
+      "see_also": ["Tcl_UniChar(3)", "encoding(n)"]
+    },
+    {
+      "term": "UTF-16LE",
+      "category": "Zeichenkodierung und Standards / Character Encoding and Standards",
+      "en_definition": "UTF-16 in little-endian byte order — each 16-bit code unit is stored as low byte first, then high byte. Available as an encoding name in Tcl's `encoding convertfrom/convertto`. Used by Windows file APIs.",
+      "de_definition": "UTF-16 mit Little-Endian-Byte-Reihenfolge — jede 16-Bit-Code-Unit wird mit niederwertigem Byte zuerst, dann höherwertigem Byte gespeichert. In Tcl als Encoding-Name in `encoding convertfrom/convertto` verfügbar. Wird von Windows-Datei-APIs genutzt.",
+      "en_example": "set bytes [encoding convertto utf-16le \"Hallo\"]\nbinary scan $bytes H* hex\n# hex = \"480061006c006c006f00\"",
+      "de_example": "",
+      "related_terms": ["UTF-16", "UTF-16BE", "encoding convertfrom", "encoding convertto"],
+      "see_also": ["encoding(n)"]
+    },
+    {
+      "term": "UTF-16BE",
+      "category": "Zeichenkodierung und Standards / Character Encoding and Standards",
+      "en_definition": "UTF-16 in big-endian byte order — each 16-bit code unit is stored as high byte first, then low byte. The Unicode standard considers UTF-16BE without BOM the canonical wire format. Available in Tcl via `encoding convertfrom/convertto utf-16be`.",
+      "de_definition": "UTF-16 mit Big-Endian-Byte-Reihenfolge — jede 16-Bit-Code-Unit wird mit höherwertigem Byte zuerst, dann niederwertigem Byte gespeichert. Der Unicode-Standard sieht UTF-16BE ohne BOM als kanonisches Wire-Format. In Tcl via `encoding convertfrom/convertto utf-16be` verfügbar.",
+      "en_example": "set bytes [encoding convertto utf-16be \"Hallo\"]\nbinary scan $bytes H* hex\n# hex = \"00480061006c006c006f\"",
+      "de_example": "",
+      "related_terms": ["UTF-16", "UTF-16LE", "encoding convertfrom", "encoding convertto"],
+      "see_also": ["encoding(n)"]
+    },
+    {
+      "term": "encoding dirs",
+      "category": "Zeichenkodierung und Standards / Character Encoding and Standards",
+      "en_definition": "Returns or sets the list of directories searched for `.enc` encoding files. Without arguments it returns the current search path; with an argument it replaces the search path. Useful when bundling custom encodings with an application.",
+      "de_definition": "Liefert oder setzt die Liste der Verzeichnisse, in denen nach `.enc`-Encoding-Dateien gesucht wird. Ohne Argumente gibt es den aktuellen Suchpfad zurück; mit Argument ersetzt es den Suchpfad. Nützlich beim Bündeln eigener Encodings mit einer Anwendung.",
+      "en_example": "encoding dirs                            ;# show current paths\nencoding dirs [list $appDir/encodings]   ;# set search path\nencoding names                           ;# list all encodings",
+      "de_example": "",
+      "related_terms": ["encoding names", "encoding system", "encoding convertfrom"],
+      "see_also": ["encoding(n)"]
+    },
+    {
+      "term": "format %c",
+      "category": "String-Subcommands / String Subcommands",
+      "en_definition": "Converts a numeric codepoint into a one-character string. `format %c $cp` returns the character whose Unicode codepoint is `$cp`. The most direct way to build a character from its codepoint at runtime — distinct from building a literal escape like `\"\\u1F600\"`.",
+      "de_definition": "Wandelt einen numerischen Codepoint in einen Ein-Zeichen-String um. `format %c $cp` liefert das Zeichen, dessen Unicode-Codepoint `$cp` ist. Der direkteste Weg, ein Zeichen zur Laufzeit aus seinem Codepoint zu erzeugen — nicht zu verwechseln mit einem literalen Escape-String wie `\"\\u1F600\"`.",
+      "en_example": "format %c 65         ;# \"A\"\nformat %c 0x20AC     ;# \"€\"\nformat %c 0x1F600    ;# grinning face emoji (Tcl 9)",
+      "de_example": "",
+      "related_terms": ["Codepoint", "scan %c", "format"],
+      "see_also": ["format(n)"]
+    },
+    {
+      "term": "scan %c",
+      "category": "String-Subcommands / String Subcommands",
+      "en_definition": "Reads a single character from the input string and stores its Unicode codepoint as an integer. The inverse of `format %c`. With a width modifier (`%Nc`) reads N characters as a list of codepoints.",
+      "de_definition": "Liest ein einzelnes Zeichen aus dem Eingabe-String und speichert dessen Unicode-Codepoint als Ganzzahl. Umkehrung von `format %c`. Mit Breiten-Modifier (`%Nc`) liest es N Zeichen als Liste von Codepoints.",
+      "en_example": "scan A %c cp                ;# cp = 65\nscan ä %c cp                ;# cp = 228\nscan \"ABC\" \"%c%c%c\" a b c    ;# a=65, b=66, c=67",
+      "de_example": "",
+      "related_terms": ["Codepoint", "format %c", "scan"],
+      "see_also": ["scan(n)"]
+    },
+    {
+      "term": "scan %x",
+      "category": "String-Subcommands / String Subcommands",
+      "en_definition": "Parses a hexadecimal number from the input string into an integer. Accepts a leading `0x` or plain hex digits. Frequently used to convert hex strings (e.g. codepoint notations like \"1F600\") into numeric values that can then be passed to `format %c`.",
+      "de_definition": "Parst eine hexadezimale Zahl aus dem Eingabe-String in eine Ganzzahl. Akzeptiert führendes `0x` oder reine Hex-Ziffern. Häufig genutzt, um Hex-Strings (z.B. Codepoint-Notationen wie \"1F600\") in numerische Werte umzuwandeln, die dann an `format %c` weitergegeben werden.",
+      "en_example": "scan \"1F600\" %x cp     ;# cp = 128512\nscan \"0xFF\"  %x n      ;# n = 255\n# Pipeline: hex string -> codepoint -> character:\nscan \"1F600\" %x cp\nformat %c $cp          ;# grinning face emoji (Tcl 9)",
+      "de_example": "",
+      "related_terms": ["scan", "format %c", "Codepoint"],
+      "see_also": ["scan(n)"]
+    },
+    {
+      "term": "fconfigure -encoding",
+      "category": "File I/O-Begriffe / File I/O Terms",
+      "en_definition": "Sets or queries the character encoding used to translate bytes from a channel into Tcl strings and vice versa. Common values: `utf-8`, `iso8859-1`, `cp1252`, `binary` (no translation). Without this setting, the system encoding is used — a frequent source of cross-platform bugs.",
+      "de_definition": "Setzt oder liest die Zeichenkodierung, mit der Bytes eines Channels in Tcl-Strings (und umgekehrt) übersetzt werden. Übliche Werte: `utf-8`, `iso8859-1`, `cp1252`, `binary` (keine Übersetzung). Ohne diese Einstellung wird das System-Encoding verwendet — eine häufige Fehlerquelle quer über Plattformen.",
+      "en_example": "set fd [open data.txt r]\nfconfigure $fd -encoding utf-8\nset content [read $fd]\nclose $fd\n\n# Binary mode (no encoding translation):\nset fd [open file.bin rb]\nfconfigure $fd -encoding binary -translation binary",
+      "de_example": "",
+      "related_terms": ["fconfigure", "fconfigure -translation", "encoding system", "encoding convertfrom"],
+      "see_also": ["fconfigure(n)", "open(n)"]
+    },
+    {
+      "term": "fconfigure -translation",
+      "category": "File I/O-Begriffe / File I/O Terms",
+      "en_definition": "Controls newline translation on a channel. Values: `auto` (default for read), `lf` (Unix), `cr` (classic Mac), `crlf` (Windows), `binary` (no translation, also forces encoding to binary). Use `binary` for non-text data; otherwise newlines and end-of-file markers may be silently changed.",
+      "de_definition": "Steuert die Newline-Übersetzung eines Channels. Werte: `auto` (Default beim Lesen), `lf` (Unix), `cr` (klassisches Mac), `crlf` (Windows), `binary` (keine Übersetzung, erzwingt zugleich Encoding `binary`). Für Nicht-Textdaten `binary` verwenden, sonst können Zeilenenden und EOF-Marker stillschweigend verändert werden.",
+      "en_example": "set fd [open out.txt w]\nfconfigure $fd -translation crlf       ;# force Windows line endings\nputs $fd \"Line 1\"\nclose $fd\n\nset fd [open image.png rb]\nfconfigure $fd -translation binary     ;# raw bytes, no translation\nset data [read $fd]\nclose $fd",
+      "de_example": "",
+      "related_terms": ["fconfigure", "fconfigure -encoding", "open", "gets", "puts"],
+      "see_also": ["fconfigure(n)", "open(n)"]
+    },
+    {
+      "term": "regsub -command",
+      "category": "Regular Expressions / Reguläre Ausdrücke",
+      "en_definition": "A `regsub` option (Tcl 8.6+) that runs a Tcl command for each match instead of using a static replacement template. The command receives the matched string and any submatches as arguments; its result becomes the replacement text. Enables transformations not expressible with `\\1`..`\\9` backreferences.",
+      "de_definition": "Eine `regsub`-Option (Tcl 8.6+), die für jeden Treffer ein Tcl-Kommando ausführt statt einer statischen Ersatzvorlage. Das Kommando bekommt den Treffer-String und alle Untertreffer als Argumente; sein Ergebnis ist der Ersatztext. Erlaubt Transformationen, die mit `\\1`..`\\9`-Backreferences nicht ausdrückbar sind.",
+      "en_example": "# Uppercase every word\nregsub -all -command {\\w+} \"hello world\" {apply {{s} {string toupper $s}}}\n# => HELLO WORLD\n\n# Hex-encode each codepoint > 127\nregsub -all -command {[^\\x00-\\x7f]} \"Café\" {apply {{c} {\n    format \"\\\\u%04X\" [scan $c %c]\n}}}\n# => Caf\\u00E9",
+      "de_example": "",
+      "related_terms": ["regsub", "regexp", "apply", "lambda"],
+      "see_also": ["regsub(n)"]
+    }
+  ]
+}

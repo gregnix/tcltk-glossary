@@ -48,7 +48,8 @@ proc create_gui {} {
     .menu add cascade -label "File" -menu .menu.file
     .menu.file add command -label "Open..." -command open_database -accelerator "Ctrl+O"
     .menu.file add separator
-    .menu.file add command -label "Export..." -command export_database
+    .menu.file add command -label "Import..." -command import_database_dialog
+    .menu.file add command -label "Export..." -command export_database_dialog
     .menu.file add separator
     .menu.file add command -label "Quit" -command save_and_exit -accelerator "Ctrl+Q"
     
@@ -67,6 +68,13 @@ proc create_gui {} {
     .menu add cascade -label "View" -menu .menu.view
     .menu.view add command -label "Categories" -command show_categories
     .menu.view add command -label "Statistics" -command show_statistics
+    
+    menu .menu.analytics -tearoff 0
+    .menu add cascade -label "Analytics" -menu .menu.analytics
+    .menu.analytics add command -label "Categories overview..."         -command show_analytics_categories
+    .menu.analytics add separator
+    .menu.analytics add command -label "Export selected category..."    -command export_one_category_dialog
+    .menu.analytics add command -label "Export multiple categories..."  -command export_multi_categories_dialog
     
     menu .menu.help -tearoff 0
     .menu add cascade -label "Help" -menu .menu.help
@@ -1571,6 +1579,302 @@ proc show_statistics {} {
     }
 }
 
+# ============================================================
+# Analytics: detaillierte Kategorien-Auswertung + Per-Kategorie Export
+# ============================================================
+
+# Hauptfenster: Categories overview
+proc show_analytics_categories {} {
+    if {![llength [info commands ::glossdb]]} {
+        tk_messageBox -type ok -icon warning -message "Please open a database first!"
+        return
+    }
+
+    set w .anaCats
+    if {[winfo exists $w]} { wm deiconify $w; raise $w; return }
+
+    toplevel $w
+    wm title $w "Analytics — Categories"
+    wm geometry $w 720x520
+    wm minsize  $w 540 360
+
+    # --- Header mit Gesamtzahlen
+    ttk::frame $w.head -padding 8
+    pack $w.head -side top -fill x
+
+    set rows [::glossdb allrows -as dicts {
+        SELECT COUNT(*) AS terms,
+               COUNT(DISTINCT category) AS cats
+        FROM terms
+    }]
+    set t [lindex $rows 0]
+    ttk::label $w.head.lbl \
+        -text "Total: [dict get $t terms] terms in [dict get $t cats] categories" \
+        -font {TkDefaultFont 10 bold}
+    pack $w.head.lbl -anchor w
+
+    # --- Treeview mit Counts pro Kategorie
+    ttk::frame $w.tvf
+    pack $w.tvf -fill both -expand 1 -padx 8 -pady {0 8}
+
+    set tv $w.tvf.tv
+    ttk::treeview $tv \
+        -columns {count bilingual examples} \
+        -show {tree headings} \
+        -selectmode extended \
+        -yscrollcommand [list $w.tvf.sb set]
+    $tv heading #0         -text "Category" -anchor w
+    $tv heading count      -text "Terms"
+    $tv heading bilingual  -text "Bilingual"
+    $tv heading examples   -text "With Example"
+    $tv column #0          -width 280 -anchor w
+    $tv column count       -width 80  -anchor center
+    $tv column bilingual   -width 80  -anchor center
+    $tv column examples    -width 110 -anchor center
+
+    ttk::scrollbar $w.tvf.sb -orient vertical -command [list $tv yview]
+
+    grid $tv -row 0 -column 0 -sticky nsew
+    grid $w.tvf.sb -row 0 -column 1 -sticky ns
+    grid rowconfigure    $w.tvf 0 -weight 1
+    grid columnconfigure $w.tvf 0 -weight 1
+
+    # Double-Click oeffnet Export fuer die ausgewaehlte Kategorie
+    bind $tv <Double-1> [list _ana_export_categories_from_tv $tv]
+
+    # --- Buttons
+    ttk::frame $w.btns -padding {8 0 8 8}
+    pack $w.btns -side bottom -fill x
+
+    ttk::label $w.btns.hint -text "Multi-Select: Ctrl/Shift-Click."
+    ttk::button $w.btns.export  -text "Export selected..." \
+        -command [list _ana_export_categories_from_tv $tv]
+    ttk::button $w.btns.refresh -text "Refresh" \
+        -command [list _ana_refresh_categories $tv]
+    ttk::button $w.btns.close   -text "Close" \
+        -command [list destroy $w]
+
+    pack $w.btns.hint    -side left
+    pack $w.btns.close   -side right
+    pack $w.btns.refresh -side right -padx {0 6}
+    pack $w.btns.export  -side right -padx {0 6}
+
+    _ana_refresh_categories $tv
+}
+
+# Treeview neu fuellen
+proc _ana_refresh_categories {tv} {
+    $tv delete [$tv children {}]
+    set rows [::glossdb allrows -as dicts {
+        SELECT category,
+               COUNT(*) AS cnt,
+               SUM(CASE WHEN en_definition IS NOT NULL AND en_definition != ''
+                         AND de_definition IS NOT NULL AND de_definition != ''
+                        THEN 1 ELSE 0 END) AS bil,
+               SUM(CASE WHEN (en_example IS NOT NULL AND en_example != '')
+                          OR (de_example IS NOT NULL AND de_example != '')
+                        THEN 1 ELSE 0 END) AS ex
+        FROM terms
+        GROUP BY category
+        ORDER BY cnt DESC, category
+    }]
+    foreach r $rows {
+        set cat [dict get $r category]
+        $tv insert {} end \
+            -text $cat \
+            -values [list \
+                [dict get $r cnt] \
+                [dict get $r bil] \
+                [dict get $r ex]]
+    }
+}
+
+# Aus Treeview-Selektion -> Export
+proc _ana_export_categories_from_tv {tv} {
+    set sel [$tv selection]
+    if {[llength $sel] == 0} {
+        tk_messageBox -type ok -icon warning \
+            -message "Please select one or more categories first."
+        return
+    }
+    set cats {}
+    foreach id $sel { lappend cats [$tv item $id -text] }
+    _ana_export_categories $cats
+}
+
+# Menue: Export Selected Category (Dropdown-Auswahl)
+proc export_one_category_dialog {} {
+    if {![llength [info commands ::glossdb]]} {
+        tk_messageBox -type ok -icon warning -message "Please open a database first!"
+        return
+    }
+
+    set cats [_ana_all_categories]
+    if {[llength $cats] == 0} {
+        tk_messageBox -type ok -icon info -message "No categories found."
+        return
+    }
+
+    set w .anaExp1
+    if {[winfo exists $w]} { destroy $w }
+    toplevel $w
+    wm title $w "Export one category"
+    wm transient $w .
+    wm resizable $w 0 0
+
+    ttk::frame $w.f -padding 12
+    pack $w.f -fill both -expand 1
+
+    ttk::label $w.f.lbl -text "Category:" -font {TkDefaultFont 10 bold}
+    pack $w.f.lbl -anchor w -pady {0 4}
+
+    set ::_ana_one_cat [lindex $cats 0]
+    ttk::combobox $w.f.cb -textvariable ::_ana_one_cat -values $cats \
+        -state readonly -width 40
+    pack $w.f.cb -fill x -pady {0 12}
+
+    ttk::frame $w.f.btns
+    pack $w.f.btns -fill x
+
+    ttk::button $w.f.btns.ok -text "Export..." -command {
+        set c $::_ana_one_cat
+        destroy .anaExp1
+        if {$c ne ""} { _ana_export_categories [list $c] }
+    }
+    ttk::button $w.f.btns.cancel -text "Cancel" -command [list destroy $w]
+    pack $w.f.btns.ok     -side right -padx {6 0}
+    pack $w.f.btns.cancel -side right
+}
+
+# Menue: Export Multiple Categories (Multi-Select-Liste)
+proc export_multi_categories_dialog {} {
+    if {![llength [info commands ::glossdb]]} {
+        tk_messageBox -type ok -icon warning -message "Please open a database first!"
+        return
+    }
+
+    set cats [_ana_all_categories]
+    if {[llength $cats] == 0} {
+        tk_messageBox -type ok -icon info -message "No categories found."
+        return
+    }
+
+    set w .anaExpMulti
+    if {[winfo exists $w]} { destroy $w }
+    toplevel $w
+    wm title $w "Export multiple categories"
+    wm transient $w .
+    wm geometry $w 480x500
+
+    ttk::frame $w.f -padding 12
+    pack $w.f -fill both -expand 1
+
+    ttk::label $w.f.lbl \
+        -text "Select categories (Ctrl/Shift-Click for multi):" \
+        -font {TkDefaultFont 10 bold}
+    grid $w.f.lbl -row 0 -column 0 -columnspan 2 -sticky w -pady {0 4}
+
+    listbox $w.f.lb -selectmode extended \
+        -yscrollcommand [list $w.f.sb set] -height 18
+    ttk::scrollbar $w.f.sb -orient vertical -command [list $w.f.lb yview]
+    foreach c $cats { $w.f.lb insert end $c }
+
+    grid $w.f.lb -row 1 -column 0 -sticky nsew
+    grid $w.f.sb -row 1 -column 1 -sticky ns
+    grid rowconfigure    $w.f 1 -weight 1
+    grid columnconfigure $w.f 0 -weight 1
+
+    ttk::frame $w.f.btns
+    grid $w.f.btns -row 2 -column 0 -columnspan 2 -sticky ew -pady {8 0}
+
+    ttk::button $w.f.btns.all -text "Select all" -command \
+        [list $w.f.lb selection set 0 end]
+    ttk::button $w.f.btns.none -text "Clear selection" -command \
+        [list $w.f.lb selection clear 0 end]
+    ttk::button $w.f.btns.ok -text "Export..." -command [string map [list %W $w] {
+        set idxs [%W.f.lb curselection]
+        set chosen {}
+        foreach i $idxs { lappend chosen [%W.f.lb get $i] }
+        destroy %W
+        if {[llength $chosen] > 0} { _ana_export_categories $chosen }
+    }]
+    ttk::button $w.f.btns.cancel -text "Cancel" -command [list destroy $w]
+
+    pack $w.f.btns.all    -side left
+    pack $w.f.btns.none   -side left -padx {6 0}
+    pack $w.f.btns.cancel -side right
+    pack $w.f.btns.ok     -side right -padx {0 6}
+}
+
+# Helper: alle Kategorien (ASC)
+proc _ana_all_categories {} {
+    set rows [::glossdb allrows -as dicts \
+        {SELECT DISTINCT category FROM terms ORDER BY category}]
+    set out {}
+    foreach r $rows { lappend out [dict get $r category] }
+    return $out
+}
+
+# Helper: gefiltert exportieren (Format-Auswahl + File-Dialog + Write)
+proc _ana_export_categories {cats} {
+    if {[llength $cats] == 0} return
+
+    set fmt [_choose_export_format]
+    if {$fmt eq ""} { return }
+
+    # Default-Filename: cat-name oder count fuer Multi
+    if {[llength $cats] == 1} {
+        set safe [regsub -all {[^[:alnum:]_-]+} [lindex $cats 0] "_"]
+        set defName "glossary-${safe}.md"
+    } else {
+        set defName "glossary-[llength $cats]-cats.md"
+    }
+
+    set filename [tk_getSaveFile \
+        -defaultextension ".md" \
+        -filetypes {{"Markdown" {.md}} {"All Files" {*}}} \
+        -title "Export categories" \
+        -initialfile $defName]
+    if {$filename eq ""} { return }
+
+    . configure -cursor watch
+    update idletasks
+    set ::status_text "Exporting [llength $cats] categories ..."
+
+    if {[catch {
+        set rows [::glossdb allrows -as dicts {
+            SELECT term, category, en_definition, de_definition,
+                   en_example, de_example, related_terms, see_also
+            FROM terms
+            ORDER BY category, term
+        }]
+        set filtered {}
+        foreach r $rows {
+            if {[dict get $r category] in $cats} { lappend filtered $r }
+        }
+
+        set fd [open $filename w]
+        fconfigure $fd -encoding utf-8
+        if {$fmt eq "import"} {
+            _export_md_importable $fd $filtered
+        } else {
+            _export_md_standard $fd $filtered
+        }
+        close $fd
+
+        . configure -cursor ""
+        set ::status_text \
+            "Exported [llength $filtered] terms from [llength $cats] categories: [file tail $filename]"
+
+        tk_messageBox -type ok -icon info \
+            -message "Export successful.\n\nFile: $filename\nTerms: [llength $filtered]\nCategories: [llength $cats]"
+    } err]} {
+        . configure -cursor ""
+        set ::status_text "Export error"
+        tk_messageBox -type ok -icon error -message "Export error:\n$err"
+    }
+}
+
 # Export
 proc export_database {} {
     if {![llength [info commands ::glossdb]]} {
@@ -1709,6 +2013,348 @@ proc _write_license_footer {fd} {
     puts $fd "Full Tcl License text:"
     puts $fd "<https://www.tcl-lang.org/software/tcltk/license.html>"
     puts $fd ""
+}
+
+# ============================================================
+# Multi-format Import / Export dialogs (MD / CSV / JSON)
+# ============================================================
+#
+# These dialogs offer a single entry point with a format combobox.
+# The actual work is delegated to the CLI tools under tools/, so the
+# GUI and CLI share one implementation.
+
+# Helper: locate the tool script (sibling tools/ directory)
+proc _tool_path {name} {
+    set guiDir [file dirname [file normalize [info script]]]
+    set candidates [list \
+        [file join $guiDir tools $name] \
+        [file join [file dirname $guiDir] tools $name] \
+        [file join /usr/local/share/tcltk-glossary tools $name]]
+    foreach c $candidates {
+        if {[file exists $c]} { return $c }
+    }
+    return ""
+}
+
+# ============================================================
+# Import dialog
+# ============================================================
+proc import_database_dialog {} {
+    if {![llength [info commands ::glossdb]]} {
+        tk_messageBox -type ok -icon warning \
+            -message "Please open or create a database first!"
+        return
+    }
+
+    set w .impDlg
+    if {[winfo exists $w]} { destroy $w }
+    toplevel $w
+    wm title $w "Import glossary"
+    wm transient $w .
+    wm resizable $w 0 0
+
+    ttk::frame $w.f -padding 12
+    pack $w.f -fill both -expand 1
+
+    ttk::label $w.f.fmtLbl -text "Source format:" -font {TkDefaultFont 10 bold}
+    grid $w.f.fmtLbl -row 0 -column 0 -sticky w -pady {0 4}
+
+    set ::_imp_fmt "Markdown (extended) — .md"
+    ttk::combobox $w.f.fmt -textvariable ::_imp_fmt -state readonly -width 36 \
+        -values [list \
+            "Markdown (extended) — .md" \
+            "CSV (RFC 4180) — .csv" \
+            "JSON (rl_json, schema 1.5) — .json"]
+    grid $w.f.fmt -row 0 -column 1 -sticky ew -pady {0 12}
+
+    ttk::label $w.f.fileLbl -text "Input file:" -font {TkDefaultFont 10 bold}
+    grid $w.f.fileLbl -row 1 -column 0 -sticky w -pady {0 4}
+    set ::_imp_file ""
+    ttk::entry $w.f.file -textvariable ::_imp_file -width 40
+    grid $w.f.file -row 1 -column 1 -sticky ew -pady {0 4}
+    ttk::button $w.f.browse -text "Browse..." -command [string map [list %W $w] {
+        set ext [lindex {.md .csv .json} [%W.f.fmt current]]
+        set ft [lindex {{{Markdown} {.md}} {{CSV} {.csv}} {{JSON} {.json}}} [%W.f.fmt current]]
+        set f [tk_getOpenFile -filetypes [list $ft {"All Files" {*}}] \
+            -defaultextension $ext -title "Open glossary export"]
+        if {$f ne ""} { set ::_imp_file $f }
+    }]
+    grid $w.f.browse -row 1 -column 2 -sticky w -padx {6 0} -pady {0 4}
+
+    ttk::label $w.f.hint -foreground gray40 -wraplength 380 -justify left \
+        -text "The current database will keep its existing entries.\nDuplicates (same term + category) are skipped."
+    grid $w.f.hint -row 2 -column 0 -columnspan 3 -sticky w -pady {6 12}
+
+    ttk::frame $w.f.btns
+    grid $w.f.btns -row 3 -column 0 -columnspan 3 -sticky e
+    ttk::button $w.f.btns.ok -text "Import" -command [list _do_import $w]
+    ttk::button $w.f.btns.cancel -text "Cancel" -command [list destroy $w]
+    pack $w.f.btns.cancel -side right
+    pack $w.f.btns.ok     -side right -padx {0 6}
+
+    grid columnconfigure $w.f 1 -weight 1
+}
+
+proc _do_import {w} {
+    if {$::_imp_file eq ""} {
+        tk_messageBox -type ok -icon warning -message "Please choose a file."
+        return
+    }
+    if {![file exists $::_imp_file]} {
+        tk_messageBox -type ok -icon error -message "File not found:\n$::_imp_file"
+        return
+    }
+    set idx [$w.f.fmt current]
+    set toolName [lindex {import_md.tcl import_csv.tcl import_json.tcl} $idx]
+    set tool [_tool_path $toolName]
+    if {$tool eq ""} {
+        tk_messageBox -type ok -icon error \
+            -message "Tool $toolName not found.\nLooked in tools/, ../tools/, /usr/local/share/tcltk-glossary/tools/."
+        return
+    }
+
+    # The CLI tool reuses the existing DB if it already exists.
+    set dbFile [_current_db_path]
+    if {$dbFile eq ""} {
+        tk_messageBox -type ok -icon error -message "Cannot determine current DB path."
+        return
+    }
+
+    # Close DB so the CLI tool can open it (single-writer)
+    set wasOpen [llength [info commands ::glossdb]]
+    if {$wasOpen} { ::glossdb close }
+
+    destroy $w
+    . configure -cursor watch
+    update idletasks
+    set ::status_text "Importing from [file tail $::_imp_file] ..."
+
+    set rc [catch {exec [info nameofexecutable] $tool $::_imp_file $dbFile 2>@1} output]
+
+    # Reopen DB
+    if {$wasOpen} { connect_db $dbFile; load_all_terms }
+    . configure -cursor ""
+
+    if {$rc != 0} {
+        set ::status_text "Import failed"
+        _show_output_dialog "Import failed" error \
+            "Import from [file tail $::_imp_file] failed." $output
+        return
+    }
+
+    set ::status_text "Import done"
+    _show_output_dialog "Import complete" info \
+        "Imported successfully from [file tail $::_imp_file]." $output
+}
+
+# ============================================================
+# Export dialog (replaces the old single-format `export_database`)
+# ============================================================
+proc export_database_dialog {} {
+    if {![llength [info commands ::glossdb]]} {
+        tk_messageBox -type ok -icon warning \
+            -message "Please open a database first!"
+        return
+    }
+
+    set w .expDlg
+    if {[winfo exists $w]} { destroy $w }
+    toplevel $w
+    wm title $w "Export glossary"
+    wm transient $w .
+    wm resizable $w 0 0
+
+    ttk::frame $w.f -padding 12
+    pack $w.f -fill both -expand 1
+
+    ttk::label $w.f.fmtLbl -text "Target format:" -font {TkDefaultFont 10 bold}
+    grid $w.f.fmtLbl -row 0 -column 0 -sticky w -pady {0 4}
+
+    set ::_exp_fmt "JSON (rl_json, schema 1.5) — .json"
+    ttk::combobox $w.f.fmt -textvariable ::_exp_fmt -state readonly -width 36 \
+        -values [list \
+            "Markdown (extended) — .md" \
+            "Markdown (legacy 4-field) — .md" \
+            "CSV (RFC 4180) — .csv" \
+            "JSON (rl_json, schema 1.5) — .json"]
+    grid $w.f.fmt -row 0 -column 1 -sticky ew -pady {0 12}
+
+    ttk::label $w.f.filterLbl -text "Filter (optional):" -font {TkDefaultFont 10 bold}
+    grid $w.f.filterLbl -row 1 -column 0 -sticky w -pady {0 4}
+
+    set cats [_ana_all_categories]
+    set ::_exp_filter "(all)"
+    set values [linsert $cats 0 "(all)"]
+    ttk::combobox $w.f.filter -textvariable ::_exp_filter -values $values -width 36
+    grid $w.f.filter -row 1 -column 1 -sticky ew -pady {0 12}
+
+    ttk::label $w.f.fileLbl -text "Output file:" -font {TkDefaultFont 10 bold}
+    grid $w.f.fileLbl -row 2 -column 0 -sticky w -pady {0 4}
+    set ::_exp_file ""
+    ttk::entry $w.f.file -textvariable ::_exp_file -width 40
+    grid $w.f.file -row 2 -column 1 -sticky ew -pady {0 4}
+    ttk::button $w.f.browse -text "Browse..." -command [string map [list %W $w] {
+        set idx [%W.f.fmt current]
+        set ext  [lindex {.md .md .csv .json} $idx]
+        set ft   [lindex {{{Markdown} {.md}} {{Markdown} {.md}} {{CSV} {.csv}} {{JSON} {.json}}} $idx]
+        set f [tk_getSaveFile -filetypes [list $ft {"All Files" {*}}] \
+            -defaultextension $ext -title "Save glossary export"]
+        if {$f ne ""} { set ::_exp_file $f }
+    }]
+    grid $w.f.browse -row 2 -column 2 -sticky w -padx {6 0} -pady {0 4}
+
+    ttk::frame $w.f.btns
+    grid $w.f.btns -row 3 -column 0 -columnspan 3 -sticky e -pady {12 0}
+    ttk::button $w.f.btns.ok -text "Export" -command [list _do_export $w]
+    ttk::button $w.f.btns.cancel -text "Cancel" -command [list destroy $w]
+    pack $w.f.btns.cancel -side right
+    pack $w.f.btns.ok     -side right -padx {0 6}
+
+    grid columnconfigure $w.f 1 -weight 1
+}
+
+proc _do_export {w} {
+    if {$::_exp_file eq ""} {
+        tk_messageBox -type ok -icon warning -message "Please choose an output file."
+        return
+    }
+    set idx [$w.f.fmt current]
+
+    # Legacy markdown -> use existing export_database (4-field)
+    if {$idx == 1} {
+        destroy $w
+        if {[catch {
+            set fd [open $::_exp_file w]
+            fconfigure $fd -encoding utf-8
+            set results [::glossdb allrows -as dicts {
+                SELECT term, category, en_definition, de_definition,
+                       en_example, de_example, related_terms, see_also
+                FROM terms
+                ORDER BY category, term
+            }]
+            _export_md_standard $fd $results
+            close $fd
+            set ::status_text "Exported [llength $results] terms (legacy MD)"
+            tk_messageBox -type ok -icon info \
+                -message "Export complete.\n\nFile: $::_exp_file\nTerms: [llength $results]"
+        } err]} {
+            tk_messageBox -type ok -icon error -message "Export error:\n$err"
+        }
+        return
+    }
+
+    # Extended formats use CLI tools
+    set toolName [lindex {export_md.tcl 1 export_csv.tcl export_json.tcl} $idx]
+    set tool [_tool_path $toolName]
+    if {$tool eq ""} {
+        tk_messageBox -type ok -icon error \
+            -message "Tool $toolName not found."
+        return
+    }
+
+    set dbFile [_current_db_path]
+    if {$dbFile eq ""} {
+        tk_messageBox -type ok -icon error -message "Cannot determine current DB path."
+        return
+    }
+
+    set toolArgs [list $dbFile $::_exp_file]
+    if {$::_exp_filter ne "" && $::_exp_filter ne "(all)"} {
+        set toolArgs [linsert $toolArgs 0 --category=$::_exp_filter]
+    }
+
+    destroy $w
+    . configure -cursor watch
+    update idletasks
+    set ::status_text "Exporting ..."
+
+    set rc [catch {exec [info nameofexecutable] $tool {*}$toolArgs 2>@1} output]
+
+    . configure -cursor ""
+    if {$rc != 0} {
+        set ::status_text "Export failed"
+        _show_output_dialog "Export failed" error \
+            "Export to [file tail $::_exp_file] failed." $output
+        return
+    }
+
+    set ::status_text "Export done: [file tail $::_exp_file]"
+    _show_output_dialog "Export complete" info \
+        "Exported successfully to [file tail $::_exp_file]." $output
+}
+
+# Helper: return the path of the currently open DB, or ""
+proc _current_db_path {} {
+    if {![llength [info commands ::glossdb]]} { return "" }
+    if {[info exists ::db_path]} { return $::db_path }
+    return ""
+}
+
+# ============================================================
+# Output dialog with selectable / copyable text
+# ============================================================
+# Replacement for tk_messageBox when showing multi-line CLI output:
+# user can read, scroll, select, copy. Useful for import/export results.
+proc _show_output_dialog {title icon shortMsg fullText} {
+    set w .outDlg
+    if {[winfo exists $w]} { destroy $w }
+    toplevel $w
+    wm title $w $title
+    wm transient $w .
+    wm geometry $w 720x520
+    wm minsize  $w 520 320
+
+    # Top: short message
+    ttk::frame $w.top -padding {12 12 12 6}
+    pack $w.top -side top -fill x
+
+    # Icon prefix as plain text -- works everywhere, no Tk-version surprises
+    set prefix ""
+    switch -- $icon {
+        error   { set prefix "✗ " }
+        warning { set prefix "⚠ " }
+        info    { set prefix "✓ " }
+    }
+    ttk::label $w.top.msg -text "${prefix}${shortMsg}" \
+        -font {TkDefaultFont 11 bold} \
+        -wraplength 640 -justify left
+    pack $w.top.msg -side left -fill x -expand 1
+
+    # Middle: text widget with scrollbar
+    ttk::frame $w.body -padding {12 0 12 0}
+    pack $w.body -side top -fill both -expand 1
+
+    text $w.body.t -wrap word \
+        -yscrollcommand [list $w.body.sb set] \
+        -relief sunken -borderwidth 1 \
+        -font {TkFixedFont}
+    ttk::scrollbar $w.body.sb -orient vertical -command [list $w.body.t yview]
+
+    grid $w.body.t  -row 0 -column 0 -sticky nsew
+    grid $w.body.sb -row 0 -column 1 -sticky ns
+    grid rowconfigure    $w.body 0 -weight 1
+    grid columnconfigure $w.body 0 -weight 1
+
+    $w.body.t insert end $fullText
+    $w.body.t configure -state disabled
+
+    # Bottom: buttons
+    ttk::frame $w.btns -padding 12
+    pack $w.btns -side bottom -fill x
+
+    ttk::button $w.btns.copy -text "Copy all" -command [string map [list %T $w.body.t] {
+        clipboard clear
+        clipboard append [%T get 1.0 end-1c]
+    }]
+    ttk::button $w.btns.close -text "Close" -command [list destroy $w]
+
+    pack $w.btns.close -side right
+    pack $w.btns.copy  -side right -padx {0 6}
+
+    focus $w.btns.close
+    bind $w <Escape> [list destroy $w]
+    bind $w <Return> [list destroy $w]
+    grab set $w
 }
 
 # Standard-Format (lesbar, was die alte Variante war)

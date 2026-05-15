@@ -1,193 +1,242 @@
 #!/usr/bin/env tclsh
-# Import Markdown Glossary -> SQLite (via TDBC)
-# Usage: tclsh import_md.tcl glossary30.md output.db
+# import_md.tcl -- Import extended-Markdown glossary into SQLite.
+#
+# Reads the extended format documented in docs/glossary-formats.md.
+# Backward compatible with the original 4-field format (terms without
+# EN-EX / DE-EX / RELATED / SEE lines import correctly with empty values).
+#
+# Usage:
+#   tclsh import_md.tcl <input.md> <output.db>
 
 package require tdbc::sqlite3
 
 if {[llength $argv] < 2} {
-    puts "Usage: $argv0 <input.md> <output.db>"
-    puts "Example: $argv0 ../tcl_tk_glossary30.md glossary.db"
+    puts stderr "Usage: $argv0 <input.md> <output.db>"
+    exit 1
+}
+set inFile [lindex $argv 0]
+set outDb  [lindex $argv 1]
+
+if {![file exists $inFile]} {
+    puts stderr "Error: input file not found: $inFile"
     exit 1
 }
 
-set input_file [lindex $argv 0]
-set output_db [lindex $argv 1]
-
-if {![file exists $input_file]} {
-    puts "Error: Input file not found: $input_file"
-    exit 1
+# ---------------------------------------------------------------
+# Schema setup (load schema.sql if available; otherwise rely on DB)
+# ---------------------------------------------------------------
+set schemaFile [file join [file dirname [info script]] schema.sql]
+if {[file exists $schemaFile] && ![file exists $outDb]} {
+    if {[catch {exec sqlite3 $outDb < $schemaFile} err]} {
+        puts stderr "Error creating schema: $err"
+        exit 1
+    }
 }
 
-# DB oeffnen/erstellen (TDBC)
-tdbc::sqlite3::connection create db $output_db
+tdbc::sqlite3::connection create db $outDb
 
-# Schema laden
-set schema_file [file join [file dirname [info script]] schema.sql]
-if {![file exists $schema_file]} {
-    puts "Error: Schema file not found: $schema_file"
-    exit 1
-}
-
-puts "Creating database schema..."
-
-# Schema via sqlite3 CLI laden (einfacher fuer DDL mit TRIGGERs)
-if {[catch {exec sqlite3 $output_db < $schema_file} err]} {
-    puts stderr "Error creating schema: $err"
-    exit 1
-}
-
-# DB reconnect mit TDBC (nach Schema-Erstellung)
-db close
-tdbc::sqlite3::connection create db $output_db
-
-# MD-Datei einlesen
-puts "Reading markdown file: $input_file"
-set fp [open $input_file r]
+# ---------------------------------------------------------------
+# Read input
+# ---------------------------------------------------------------
+set fp [open $inFile r]
 fconfigure $fp -encoding utf-8
 set content [read $fp]
 close $fp
 
-# Parse Markdown
-set current_category ""
-set current_term ""
-set en_def ""
-set de_def ""
-set in_footer 0
-
-proc save_term {db category term en_def de_def} {
-    if {$term eq ""} return
-    
+# ---------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------
+proc saveTerm {db category term enDef deDef enEx deEx related seeAlso} {
     set term [string trim $term]
-    set en_def [string trim $en_def]
-    set de_def [string trim $de_def]
-    
-    if {$term eq ""} return
-    
-    # Bereits vorhanden? (TDBC) — pro Kategorie eindeutig (Schema 1.5)
-    set result [$db allrows -as lists {
+    if {$term eq ""} { return 0 }
+
+    # Skip if (term, category) already exists
+    set rows [$db allrows -as lists {
         SELECT COUNT(*) FROM terms WHERE term = :term AND category = :category
     }]
-    set exists [lindex [lindex $result 0] 0]
-    if {$exists > 0} {
-        puts "  SKIP (duplicate in '$category'): $term"
-        return
+    if {[lindex [lindex $rows 0] 0] > 0} {
+        puts "  SKIP duplicate: $term"
+        return 0
     }
-    
-    # INSERT (TDBC mit Prepared Statement)
+
     set stmt [$db prepare {
-        INSERT INTO terms (term, category, en_definition, de_definition)
-        VALUES (:term, :category, :en_def, :de_def)
+        INSERT INTO terms
+            (term, category, en_definition, de_definition,
+             en_example, de_example, related_terms, see_also)
+        VALUES
+            (:term, :category, :enDef, :deDef,
+             :enEx,  :deEx,    :related, :seeAlso)
     }]
     $stmt execute
     $stmt close
-    
     puts "  + $term"
+    return 1
 }
 
-set line_num 0
-set terms_count 0
-set categories_count 0
+proc ensureCategory {db category} {
+    if {$category eq ""} return
+    set rows [$db allrows -as lists {SELECT COUNT(*) FROM categories WHERE name = :category}]
+    if {[lindex [lindex $rows 0] 0] == 0} {
+        set stmt [$db prepare {
+            INSERT INTO categories (name, sort_order) VALUES (:category, 999)
+        }]
+        $stmt execute
+        $stmt close
+        puts "\nCategory: $category"
+    }
+}
+
+# ---------------------------------------------------------------
+# Parser: line-by-line, with a small state machine for code fences
+# ---------------------------------------------------------------
+set currentCategory ""
+set currentTerm     ""
+set enDef ""; set deDef ""
+set enEx  ""; set deEx  ""
+set related ""; set seeAlso ""
+
+# fence state:
+#   ""        => not in a fence
+#   "en_ex"   => currently collecting EN example body
+#   "de_ex"   => currently collecting DE example body
+set fenceTarget ""
+set fenceBuf {}
+set inFooter 0
+
+set termsCount 0
+
+proc flushTerm {} {
+    upvar 1 currentCategory cat  currentTerm   term
+    upvar 1 enDef enDef          deDef         deDef
+    upvar 1 enEx  enEx           deEx          deEx
+    upvar 1 related rel          seeAlso       see
+    upvar 1 termsCount tc
+    if {$term ne ""} {
+        if {[saveTerm db $cat $term $enDef $deDef $enEx $deEx $rel $see]} {
+            incr tc
+        }
+    }
+    set term ""; set enDef ""; set deDef ""
+    set enEx ""; set deEx ""
+    set rel  ""; set see ""
+}
 
 foreach line [split $content "\n"] {
-    incr line_num
-    
-    # Kategorie-Header (## ...)
-    if {[regexp {^##\s+(.+)$} $line -> cat_name]} {
-        # Vorherigen Term speichern
-        if {$current_term ne ""} {
-            save_term db $current_category $current_term $en_def $de_def
-            incr terms_count
+
+    # Active code fence? collect until closing fence.
+    if {$fenceTarget ne ""} {
+        if {[regexp {^[ \t]*(```|~~~)\s*$} $line]} {
+            # Closing fence -- commit body
+            set body [join $fenceBuf "\n"]
+            if {$fenceTarget eq "en_ex"} {
+                set enEx $body
+            } else {
+                set deEx $body
+            }
+            set fenceTarget ""
+            set fenceBuf {}
+        } else {
+            lappend fenceBuf $line
         }
-        
-        set heading [string trim $cat_name]
-        
-        # Reservierte Footer-Headers ueberspringen (License-Block am Ende
-        # exportierter Markdown-Dateien). Diese sind keine Kategorien.
+        continue
+    }
+
+    # Category header
+    if {[regexp {^##\s+(.+)$} $line -> catName]} {
+        flushTerm
+        set heading [string trim $catName]
         if {$heading in {License Acknowledgments}} {
-            set current_category ""
-            set current_term ""
-            set en_def ""
-            set de_def ""
-            set in_footer 1
+            set currentCategory ""
+            set inFooter 1
             continue
         }
-        
-        set in_footer 0
-        set current_category $heading
-        set current_term ""
-        set en_def ""
-        set de_def ""
-        
-        # Kategorie speichern (TDBC)
-        set result [db allrows -as lists {SELECT COUNT(*) FROM categories WHERE name = :current_category}]
-        set exists [lindex [lindex $result 0] 0]
-        if {$exists == 0} {
-            set stmt [db prepare {INSERT INTO categories (name, sort_order) VALUES (:current_category, :categories_count)}]
-            $stmt execute
-            $stmt close
-            incr categories_count
-            puts "\nCategory: $current_category"
-        }
+        set inFooter 0
+        set currentCategory $heading
+        ensureCategory db $currentCategory
         continue
     }
-    
-    # Im Footer-Bereich: alles weitere ignorieren bis zum naechsten ##
-    if {[info exists in_footer] && $in_footer} {
-        continue
-    }
-    
-    # Term-Header (**term**)
+
+    if {$inFooter} continue
+
+    # Term header
     if {[regexp {^\*\*(.+?)\*\*\s*$} $line -> term]} {
-        # Vorherigen Term speichern
-        if {$current_term ne ""} {
-            save_term db $current_category $current_term $en_def $de_def
-            incr terms_count
+        flushTerm
+        set currentTerm [string trim $term]
+        continue
+    }
+
+    # Definition lines
+    if {[regexp {^-\s+EN:\s*(.+)$} $line -> txt]} {
+        set enDef [string trim $txt]
+        continue
+    }
+    if {[regexp {^-\s+DE:\s*(.+)$} $line -> txt]} {
+        set deDef [string trim $txt]
+        continue
+    }
+
+    # Example markers -- open fence on next ```/~~~ line
+    if {[regexp {^-\s+EN-EX:\s*(.*)$} $line -> rest]} {
+        set rest [string trim $rest]
+        if {$rest ne ""} {
+            # Single-line example given inline
+            set enEx $rest
+        } else {
+            set fenceTarget "en_ex"
+            set fenceBuf {}
         }
-        
-        set current_term [string trim $term]
-        set en_def ""
-        set de_def ""
         continue
     }
-    
-    # EN-Zeile (- EN: ...)
-    if {[regexp {^-\s+EN:\s*(.+)$} $line -> def]} {
-        set en_def [string trim $def]
+    if {[regexp {^-\s+DE-EX:\s*(.*)$} $line -> rest]} {
+        set rest [string trim $rest]
+        if {$rest ne ""} {
+            set deEx $rest
+        } else {
+            set fenceTarget "de_ex"
+            set fenceBuf {}
+        }
         continue
     }
-    
-    # DE-Zeile (- DE: ...)
-    if {[regexp {^-\s+DE:\s*(.+)$} $line -> def]} {
-        set de_def [string trim $def]
+
+    # Cross-references
+    if {[regexp {^-\s+RELATED:\s*(.+)$} $line -> txt]} {
+        set related [string trim $txt]
         continue
+    }
+    if {[regexp {^-\s+SEE:\s*(.+)$} $line -> txt]} {
+        set seeAlso [string trim $txt]
+        continue
+    }
+
+    # If a fence opens immediately after EN-EX: / DE-EX: (no content)
+    # ... was handled by setting fenceTarget. Now opening line:
+    if {$fenceTarget ne ""} {
+        # Should not reach here; fenceTarget is set, lookup is above
+    } elseif {[regexp {^[ \t]*(```|~~~)\s*\w*\s*$} $line]} {
+        # An opening fence appears without a prior EN-EX:/DE-EX: cue
+        # (e.g. inside body text) -- ignore to avoid accidental capture.
     }
 }
 
-# Letzten Term speichern
-if {$current_term ne ""} {
-    save_term db $current_category $current_term $en_def $de_def
-    incr terms_count
-}
+# Flush last term
+flushTerm
 
-# Statistik
-puts "\n=========================================="
-puts "Import complete!"
+# ---------------------------------------------------------------
+# Stats
+# ---------------------------------------------------------------
+puts ""
 puts "=========================================="
-puts "Terms imported:      $terms_count"
-puts "Categories found:    $categories_count"
+puts "Import complete."
+puts "  Terms inserted: $termsCount"
+puts "=========================================="
 
-# TDBC: allrows -as dicts
-set stats [db allrows -as dicts {SELECT * FROM stats}]
-if {[llength $stats] > 0} {
-    set row [lindex $stats 0]
-    puts "Total terms in DB:   [dict get $row total_terms]"
-    puts "Total categories:    [dict get $row total_categories]"
-    puts "Bilingual terms:     [dict get $row bilingual_terms]"
-    puts "Terms with examples: [dict get $row terms_with_examples]"
-}
+if {[catch {
+    set stats [db allrows -as dicts -nullvalue 0 {SELECT * FROM stats}]
+    if {[llength $stats] > 0} {
+        set s [lindex $stats 0]
+        puts "DB totals: [dict get $s total_terms] terms, [dict get $s total_categories] categories"
+    }
+}]} {}
 
 db close
-
-puts "\nDatabase: $output_db"
-puts "Ready for use with glossary_gui.tcl or glossary_tui.tcl"
-
+exit 0

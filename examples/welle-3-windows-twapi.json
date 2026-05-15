@@ -1,0 +1,174 @@
+{
+  "schema": "tcltk-glossary/1.5",
+  "exported": "2026-05-15T06:45:00Z",
+  "stats": {
+    "terms": 15,
+    "categories": 3
+  },
+  "terms": [
+    {
+      "term": "TWAPI",
+      "category": "Windows-Plattform und TWAPI / Windows Platform and TWAPI",
+      "en_definition": "Tcl Windows API — an extensive Tcl extension that exposes hundreds of Win32 API functions to Tcl scripts (processes, services, registry, network adapters, clipboard, shell, COM, security). Bundled with Magicsplat Tcl/Tk and installable via `package require twapi`. Replaces the need for C glue code or external command-line tools on Windows.",
+      "de_definition": "Tcl Windows API — eine umfangreiche Tcl-Erweiterung, die hunderte Win32-API-Funktionen für Tcl-Skripte verfügbar macht (Prozesse, Dienste, Registry, Netzwerk-Adapter, Zwischenablage, Shell, COM, Security). Bei Magicsplat Tcl/Tk dabei, ladbar via `package require twapi`. Ersetzt unter Windows die Notwendigkeit von C-Glue-Code oder externen CLI-Tools.",
+      "en_example": "package require twapi\n\nputs [twapi::get_os_description]\n# => \"Windows 11 Pro\"\n\nset mem [twapi::get_memory_info]\nputs \"RAM: [expr {[dict get $mem -totalphys] / 1024.0 / 1024 / 1024}] GB\"\n\n# Find Notepad windows\nforeach hwnd [twapi::find_windows -text \"*Notepad*\"] {\n    puts \"[twapi::get_window_text $hwnd]\"\n}",
+      "de_example": "",
+      "related_terms": ["Magicsplat", "tcl_platform(platform)", "registry", "COM (Component Object Model)", "HWND"],
+      "see_also": ["https://twapi.magicsplat.com/", "twapi(n)"]
+    },
+
+    {
+      "term": "Magicsplat",
+      "category": "Windows-Plattform und TWAPI / Windows Platform and TWAPI",
+      "en_definition": "A current free distribution of Tcl/Tk for Windows, maintained by Ashok Nadkarni. Successor to the role ActiveState's ActiveTcl previously played. Ships Tcl 8.6 / 9.x, Tk, Tcllib, Tklib, tdom, TWAPI, sqlite3, tcom, and ~50 other extensions in one installer. The standard recommendation for Windows users today.",
+      "de_definition": "Eine aktuelle freie Tcl/Tk-Distribution für Windows, gepflegt von Ashok Nadkarni. Übernimmt die Rolle, die früher ActiveState's ActiveTcl spielte. Liefert Tcl 8.6 / 9.x, Tk, Tcllib, Tklib, tdom, TWAPI, sqlite3, tcom und ~50 weitere Erweiterungen in einem Installer. Die Standardempfehlung für Windows-Nutzer heutzutage.",
+      "en_example": "# After installation from https://www.magicsplat.com/tcl-installer/\n# the standard packages are available via package require:\n\npackage require Tcl 9.0\npackage require Tk\npackage require twapi\npackage require tdom\npackage require sqlite3\npackage require tcom\n# All ready to go, no separate downloads needed.",
+      "de_example": "",
+      "related_terms": ["TWAPI", "ActiveTcl", "teacup", "Teapot", "tcom"],
+      "see_also": ["https://www.magicsplat.com/"]
+    },
+
+    {
+      "term": "teacup",
+      "category": "Windows-Plattform und TWAPI / Windows Platform and TWAPI",
+      "en_definition": "Command-line client for the Teapot package repository (originally ActiveState, now community-mirrored). Installs Tcl extensions on demand into a local Teapot directory. Largely superseded by Magicsplat's bundled approach, but still used in legacy ActiveTcl environments and for CI scripts. Syntax: `teacup install <pkg>`, `teacup search <term>`, `teacup list`.",
+      "de_definition": "Command-Line-Client für das Teapot-Package-Repository (ursprünglich ActiveState, heute community-gespiegelt). Installiert Tcl-Erweiterungen on-demand in ein lokales Teapot-Verzeichnis. Größtenteils durch Magicsplat's Bundle-Ansatz abgelöst, wird aber noch in Legacy-ActiveTcl-Umgebungen und CI-Skripten genutzt. Syntax: `teacup install <pkg>`, `teacup search <term>`, `teacup list`.",
+      "en_example": "# Install an extension\nteacup install twapi\nteacup install tdom\n\n# Search for available packages\nteacup search sqlite\n\n# List what's installed locally\nteacup list",
+      "de_example": "",
+      "related_terms": ["Teapot", "ActiveTcl", "Magicsplat", "package require"],
+      "see_also": ["teacup(1)"]
+    },
+
+    {
+      "term": "Teapot",
+      "category": "Windows-Plattform und TWAPI / Windows Platform and TWAPI",
+      "en_definition": "Tcl Extension Archive Pot — a network-accessible repository of pre-built Tcl extensions for multiple platforms, originally hosted by ActiveState. Client tool: `teacup`. Each entry is a `.tap` or `.zip` containing platform-specific binaries plus metadata (package name, version, architecture, dependencies). Modern projects increasingly bundle dependencies directly (Starkit, ZipKit) instead of relying on Teapot.",
+      "de_definition": "Tcl Extension Archive Pot — ein netzwerk-erreichbares Repository vorgebauter Tcl-Erweiterungen für mehrere Plattformen, ursprünglich von ActiveState gehostet. Client-Tool: `teacup`. Jeder Eintrag ist ein `.tap` oder `.zip` mit plattformspezifischen Binaries plus Metadaten (Paketname, Version, Architektur, Abhängigkeiten). Moderne Projekte bündeln Abhängigkeiten zunehmend direkt (Starkit, ZipKit) statt auf Teapot zu setzen.",
+      "en_example": "# A teapot URL\n# http://teapot.activestate.com/package/name/twapi/ver/4.4.7/arch/win32-ix86\n\n# Use teacup as the client\nteacup install twapi\n# (Resolves dependencies via the repository's metadata)",
+      "de_example": "",
+      "related_terms": ["teacup", "ActiveTcl", "Magicsplat", "Starkit", "ZipKit"],
+      "see_also": ["teacup(1)"]
+    },
+
+    {
+      "term": "registry",
+      "category": "Windows-Plattform und TWAPI / Windows Platform and TWAPI",
+      "en_definition": "Tcl built-in command on Windows for reading and writing the Windows Registry. Loaded via `package require registry`. Provides `registry get`, `registry set`, `registry delete`, `registry keys`, `registry values`, `registry type`. Hive names can be abbreviated: `HKLM` for `HKEY_LOCAL_MACHINE`, `HKCU` for `HKEY_CURRENT_USER`.",
+      "de_definition": "In Tcl auf Windows eingebauter Befehl zum Lesen und Schreiben der Windows-Registry. Wird via `package require registry` geladen. Bietet `registry get`, `registry set`, `registry delete`, `registry keys`, `registry values`, `registry type`. Hive-Namen können abgekürzt werden: `HKLM` für `HKEY_LOCAL_MACHINE`, `HKCU` für `HKEY_CURRENT_USER`.",
+      "en_example": "package require registry\n\n# Read a value\nset shellState [registry get \\\n    {HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer} \\\n    ShellState]\n\n# Enumerate subkeys\nset subkeys [registry keys HKCU\\\\Software]\n\n# Write a value (DWORD)\nregistry set HKCU\\\\Software\\\\MyApp Version 1 dword\n\n# Delete a value\nregistry delete HKCU\\\\Software\\\\MyApp Version",
+      "de_example": "",
+      "related_terms": ["TWAPI", "tcl_platform(platform)", "HKEY_LOCAL_MACHINE", "HKEY_CURRENT_USER"],
+      "see_also": ["registry(n)"]
+    },
+
+    {
+      "term": "HWND",
+      "category": "Windows-Plattform und TWAPI / Windows Platform and TWAPI",
+      "en_definition": "Window Handle — an opaque integer identifier used by the Win32 API to refer to a window (anything from a top-level frame to a button). Returned by TWAPI procs like `twapi::find_windows` and accepted by `twapi::get_window_text`, `twapi::move_window`, `twapi::set_foreground_window`. Not portable: HWNDs are valid only within a single Windows session.",
+      "de_definition": "Window Handle — eine opake Integer-ID, mit der die Win32-API auf ein Fenster verweist (von Top-Level-Frame bis Button). Wird von TWAPI-Procs wie `twapi::find_windows` zurückgegeben und von `twapi::get_window_text`, `twapi::move_window`, `twapi::set_foreground_window` akzeptiert. Nicht portabel: HWNDs sind nur innerhalb einer Windows-Sitzung gültig.",
+      "en_example": "package require twapi\n\n# Find all Notepad windows and bring one to front\nset hwnds [twapi::find_windows -text \"*Notepad*\" -visible 1]\nforeach hwnd $hwnds {\n    puts \"Window $hwnd: [twapi::get_window_text $hwnd]\"\n}\nif {[llength $hwnds] > 0} {\n    twapi::set_foreground_window [lindex $hwnds 0]\n}\n\n# Get Tk's HWND for a toplevel (for native Win32 interop)\nset hwnd [twapi::tkpath_to_hwnd .myToplevel]",
+      "de_example": "",
+      "related_terms": ["TWAPI", "find_windows", "Win32", "tcl_platform(platform)"],
+      "see_also": ["twapi_windows(n)"]
+    },
+
+    {
+      "term": "SID (Security Identifier)",
+      "category": "Windows-Plattform und TWAPI / Windows Platform and TWAPI",
+      "en_definition": "Security Identifier — a unique value identifying a Windows user account, group, or computer (e.g. `S-1-5-21-...`). Used throughout Win32 security APIs for access-control entries (ACEs), token identity and audit records. TWAPI returns SIDs as strings (the SDDL form) and provides conversion helpers like `twapi::lookup_account_sid` (SID → name) and `twapi::lookup_account_name` (name → SID).",
+      "de_definition": "Security Identifier — ein eindeutiger Wert, der ein Windows-Benutzerkonto, eine Gruppe oder einen Computer identifiziert (z.B. `S-1-5-21-...`). Wird in der gesamten Win32-Security-API für Access-Control-Entries (ACEs), Token-Identitäten und Audit-Records genutzt. TWAPI gibt SIDs als Strings (in SDDL-Form) zurück und stellt Konvertierungs-Helper bereit wie `twapi::lookup_account_sid` (SID → Name) und `twapi::lookup_account_name` (Name → SID).",
+      "en_example": "package require twapi\n\n# Current user's SID\nset sid [twapi::get_current_user_sid]\nputs $sid\n# => S-1-5-21-1234567890-987654321-555555555-1001\n\n# SID -> account name\narray set info [twapi::lookup_account_sid $sid]\nputs \"$info(domain)\\\\$info(name)\"\n\n# Account name -> SID\nset adminSid [twapi::lookup_account_name Administrators]",
+      "de_example": "",
+      "related_terms": ["TWAPI", "tcl_platform(user)", "Win32 Security"],
+      "see_also": ["twapi_security(n)"]
+    },
+
+    {
+      "term": "CSIDL",
+      "category": "Windows-Plattform und TWAPI / Windows Platform and TWAPI",
+      "en_definition": "Constant Special Item ID List — a numeric identifier for a well-known Windows folder (Desktop, Documents, AppData, ProgramFiles, ...). Used by `twapi::get_shell_folder` and the underlying `SHGetFolderPath` API. The newer KNOWNFOLDERID GUIDs supersede CSIDL on Vista+, but CSIDL constants still work via TWAPI for compatibility.",
+      "de_definition": "Constant Special Item ID List — eine numerische ID für einen bekannten Windows-Ordner (Desktop, Dokumente, AppData, ProgramFiles, ...). Wird von `twapi::get_shell_folder` und der zugrunde liegenden `SHGetFolderPath`-API genutzt. Die neueren KNOWNFOLDERID-GUIDs lösen CSIDL ab Vista+ ab, aber CSIDL-Konstanten funktionieren via TWAPI weiterhin aus Kompatibilitätsgründen.",
+      "en_example": "package require twapi\n\n# Common CSIDLs\nputs [twapi::get_shell_folder CSIDL_DESKTOP]\nputs [twapi::get_shell_folder CSIDL_PERSONAL]    ;# Documents\nputs [twapi::get_shell_folder CSIDL_APPDATA]     ;# Roaming AppData\nputs [twapi::get_shell_folder CSIDL_LOCAL_APPDATA]\nputs [twapi::get_shell_folder CSIDL_PROGRAM_FILES]\nputs [twapi::get_shell_folder CSIDL_STARTUP]",
+      "de_example": "",
+      "related_terms": ["TWAPI", "shell_execute", "KNOWNFOLDERID"],
+      "see_also": ["twapi_shell(n)"]
+    },
+
+    {
+      "term": "Filesystem Watcher",
+      "category": "Windows-Plattform und TWAPI / Windows Platform and TWAPI",
+      "en_definition": "A facility to receive notifications when files in a directory tree change (created, modified, deleted, renamed). On Windows wrapped by TWAPI via `ReadDirectoryChangesW`; the Tcl-side proc is `twapi::begin_filesystem_monitor`. The supplied callback runs in the Tcl event loop. Cancel monitoring with `twapi::cancel_filesystem_monitor`.",
+      "de_definition": "Eine Einrichtung, um Benachrichtigungen zu erhalten, wenn sich Dateien in einem Verzeichnisbaum ändern (erstellt, modifiziert, gelöscht, umbenannt). Auf Windows von TWAPI über `ReadDirectoryChangesW` gekapselt; die Tcl-seitige Proc heißt `twapi::begin_filesystem_monitor`. Der übergebene Callback läuft in der Tcl-Eventloop. Überwachung beenden mit `twapi::cancel_filesystem_monitor`.",
+      "en_example": "package require twapi\n\nproc onFileChange {path action args} {\n    puts \"[clock format [clock seconds] -format %H:%M:%S] $action: $path\"\n}\n\nset handle [twapi::begin_filesystem_monitor \\\n    C:/Temp onFileChange \\\n    -subtree 1 \\\n    -patterns {*.log *.txt}]\n\n# Run the event loop\nvwait forever\n\n# Stop later\ntwapi::cancel_filesystem_monitor $handle",
+      "de_example": "",
+      "related_terms": ["TWAPI", "ReadDirectoryChangesW", "vwait", "Event Loop"],
+      "see_also": ["twapi_filesystem(n)"]
+    },
+
+    {
+      "term": "tcom",
+      "category": "Wrapper und Prozess-Kommunikation / Wrappers and Process Communication",
+      "en_definition": "A Tcl extension for COM/OLE Automation on Windows. Lets Tcl scripts create and drive ActiveX / COM objects (Excel, Word, Internet Explorer, Outlook, WMI, ADO, ...). Loaded via `package require tcom`. The main entry point is `::tcom::ref createobject \"Class.ProgID\"`, after which methods are called as if on a Tcl command.",
+      "de_definition": "Eine Tcl-Erweiterung für COM/OLE-Automation auf Windows. Erlaubt Tcl-Skripten, ActiveX-/COM-Objekte zu erzeugen und zu steuern (Excel, Word, Internet Explorer, Outlook, WMI, ADO, ...). Wird via `package require tcom` geladen. Haupteinstieg: `::tcom::ref createobject \"Class.ProgID\"`, danach werden Methoden wie auf einem Tcl-Kommando aufgerufen.",
+      "en_example": "package require tcom\n\nset excel [::tcom::ref createobject \"Excel.Application\"]\n$excel Visible 1\n\nset wb [[$excel Workbooks] Add]\nset sheet [[$wb Worksheets] Item 1]\n\n[$sheet Cells 1 1] Value \"Hello from Tcl!\"\n[$sheet Cells 1 2] Value 42\n\n# Cleanup\n$wb SaveAs C:/Temp/test.xlsx\n$excel Quit",
+      "de_example": "",
+      "related_terms": ["COM (Component Object Model)", "OLE Automation", "TWAPI", "Magicsplat"],
+      "see_also": ["http://www.vex.net/~cthuang/tcom/"]
+    },
+
+    {
+      "term": "COM (Component Object Model)",
+      "category": "Wrapper und Prozess-Kommunikation / Wrappers and Process Communication",
+      "en_definition": "Microsoft's binary interface standard for software components, the foundation for OLE, ActiveX, and DCOM. A COM object exposes one or more interfaces (sets of methods identified by IIDs) and is identified by a CLSID or a human-readable ProgID like `Excel.Application`. In Tcl, COM objects are accessed via the `tcom` extension or TWAPI's COM bindings.",
+      "de_definition": "Microsofts binärer Interface-Standard für Software-Komponenten, Basis für OLE, ActiveX und DCOM. Ein COM-Objekt stellt eine oder mehrere Interfaces bereit (Methoden-Mengen, identifiziert durch IIDs) und wird über eine CLSID oder eine menschenlesbare ProgID wie `Excel.Application` referenziert. In Tcl werden COM-Objekte über die `tcom`-Erweiterung oder TWAPI's COM-Bindings angesprochen.",
+      "en_example": "package require tcom\n\n# Create an instance via ProgID\nset wmi [::tcom::ref createobject \"WbemScripting.SWbemLocator\"]\nset services [$wmi ConnectServer]\n\n# Query running processes via WMI\nset query \"SELECT Name, ProcessId FROM Win32_Process\"\nforeach proc [$services ExecQuery $query] {\n    puts \"[$proc Name] (PID [$proc ProcessId])\"\n}",
+      "de_example": "",
+      "related_terms": ["tcom", "OLE Automation", "ActiveX", "DCOM", "WMI"],
+      "see_also": ["tcom(n)"]
+    },
+
+    {
+      "term": "OLE Automation",
+      "category": "Wrapper und Prozess-Kommunikation / Wrappers and Process Communication",
+      "en_definition": "A subset of COM that exposes scriptable object models — designed so that interpreted languages (originally Visual Basic, JScript, also Tcl via tcom) can drive Windows applications. All Office applications, Internet Explorer, WSH, ADO, WMI etc. are accessible through OLE Automation. Methods, properties and events are described in type libraries (`.tlb`).",
+      "de_definition": "Ein Subset von COM, das skriptbare Object-Models bereitstellt — entworfen, damit interpretierte Sprachen (ursprünglich Visual Basic, JScript, auch Tcl via tcom) Windows-Anwendungen steuern können. Alle Office-Anwendungen, Internet Explorer, WSH, ADO, WMI usw. sind über OLE-Automation erreichbar. Methoden, Properties und Events sind in Type Libraries (`.tlb`) beschrieben.",
+      "en_example": "package require tcom\n\n# Drive Word via OLE Automation\nset word [::tcom::ref createobject \"Word.Application\"]\n$word Visible 1\n\nset doc [[$word Documents] Add]\nset selection [$word Selection]\n$selection TypeText \"Generated by Tcl on [clock format [clock seconds]]\"\n$selection TypeParagraph\n\n# Property access vs. method:\nset name [$doc Name]              ;# property read\n$doc SaveAs C:/Temp/out.docx      ;# method call",
+      "de_example": "",
+      "related_terms": ["COM (Component Object Model)", "tcom", "ActiveX", "WSH"],
+      "see_also": ["tcom(n)"]
+    },
+
+    {
+      "term": "CF_TEXT",
+      "category": "Clipboard und Selection / Clipboard and Selection",
+      "en_definition": "Windows clipboard format ID 1 — plain ANSI text (single-byte, system code page). The most basic clipboard format; almost every application offering text exposes this. Modern apps prefer `CF_UNICODETEXT` because it preserves characters outside the local code page. TWAPI: `twapi::clipboard_format_available 1` and `twapi::read_clipboard 1`.",
+      "de_definition": "Windows-Clipboard-Format-ID 1 — reiner ANSI-Text (Single-Byte, System-Code-Page). Das einfachste Clipboard-Format; nahezu jede Text-anbietende Anwendung stellt es bereit. Moderne Apps bevorzugen `CF_UNICODETEXT`, weil es Zeichen außerhalb der lokalen Code-Page bewahrt. TWAPI: `twapi::clipboard_format_available 1` und `twapi::read_clipboard 1`.",
+      "en_example": "package require twapi\n\n# Check whether plain text is on the clipboard\nif {[twapi::clipboard_format_available 1]} {\n    set text [twapi::read_clipboard 1]\n    puts \"Got [string length $text] characters of ANSI text\"\n}",
+      "de_example": "",
+      "related_terms": ["CF_UNICODETEXT", "CF_BITMAP", "clipboard", "TWAPI", "Windows Code Pages"],
+      "see_also": ["twapi_clipboard(n)"]
+    },
+
+    {
+      "term": "CF_UNICODETEXT",
+      "category": "Clipboard und Selection / Clipboard and Selection",
+      "en_definition": "Windows clipboard format ID 13 — UTF-16LE text. The preferred format for modern apps because it preserves all Unicode characters regardless of the system code page. Tcl's built-in `clipboard get` returns content that came in as `CF_UNICODETEXT` correctly; raw byte-level access is available via `twapi::read_clipboard 13`.",
+      "de_definition": "Windows-Clipboard-Format-ID 13 — UTF-16LE-Text. Das bevorzugte Format für moderne Apps, weil es alle Unicode-Zeichen unabhängig von der System-Code-Page bewahrt. Tcls eingebauter `clipboard get` liefert als `CF_UNICODETEXT` eingegangenen Inhalt korrekt; rohen Byte-Zugriff bietet `twapi::read_clipboard 13`.",
+      "en_example": "package require twapi\n\n# Modern preferred format\nif {[twapi::clipboard_format_available 13]} {\n    set text [twapi::read_clipboard 13]\n    # Already a Tcl string -- emoji and CJK work\n    puts $text\n}\n\n# Equivalent via Tk's built-in (cross-platform):\nif {![catch {clipboard get -type STRING} text]} {\n    puts $text\n}",
+      "de_example": "",
+      "related_terms": ["CF_TEXT", "CF_BITMAP", "clipboard", "UTF-16LE", "TWAPI"],
+      "see_also": ["twapi_clipboard(n)", "clipboard(n)"]
+    },
+
+    {
+      "term": "CF_BITMAP",
+      "category": "Clipboard und Selection / Clipboard and Selection",
+      "en_definition": "Windows clipboard format ID 2 — a device-dependent bitmap (HBITMAP handle). Together with `CF_DIB` (format 8, device-independent bitmap) the primary way images travel through the clipboard on Windows. TWAPI exposes raw access; for Tk's photo image, a small bridge is required to convert between HBITMAP and Tk's image format.",
+      "de_definition": "Windows-Clipboard-Format-ID 2 — eine gerätenabhängige Bitmap (HBITMAP-Handle). Zusammen mit `CF_DIB` (Format 8, geräteunabhängige Bitmap) der primäre Weg, Bilder über die Zwischenablage zu transportieren. TWAPI bietet rohen Zugriff; für Tks photo-image ist ein kleiner Adapter nötig, um zwischen HBITMAP und Tks Image-Format zu konvertieren.",
+      "en_example": "package require twapi\n\n# Is an image on the clipboard?\nset hasBmp  [twapi::clipboard_format_available 2]\nset hasDib  [twapi::clipboard_format_available 8]\nputs \"Bitmap: $hasBmp   DIB: $hasDib\"\n\n# Available formats overall\nforeach fmt [twapi::get_clipboard_formats] {\n    puts \"format $fmt\"\n}",
+      "de_example": "",
+      "related_terms": ["CF_TEXT", "CF_UNICODETEXT", "clipboard", "CF_DIB", "HBITMAP"],
+      "see_also": ["twapi_clipboard(n)"]
+    }
+  ]
+}
